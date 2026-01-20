@@ -1,4 +1,4 @@
-$HOME/.local/scripts
-$HOME/.config/nvim
-$HOME/.config/kitty
-$HOME/.config/homebrew
+~/.local/scripts
+~/.config/nvim
+~/.config/kitty
+~/.config/homebrew

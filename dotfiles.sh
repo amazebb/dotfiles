@@ -4,7 +4,7 @@ typeset -ga _ZZ_DOT_FOLDERS
 
 _ZZ_DOT=(
   [git]=""       # Git binary, default homebrew install on macOS is /opt/homebrew/bin/git
-  [repo]=""      # dotfiles repo, default is $HOME/.dotfiles
+  [repo]=""      # dotfiles repo, default is $HOME/.dotfiles if no repo file found adjacent to config file
   [prefix]=""    # install directory for dotfiles.sh, default is $HOME/.config/dotfiles
   [is_tracked]=0 # current folder tracked(1)/not-tracked(0) status, automatically determined should not be set manually
 )
@@ -18,9 +18,13 @@ _zz_dot_init() {
   # shellcheck disable=SC2296,SC2298
   _ZZ_DOT[prefix]="${${(%):-%x}:A:h}"
 
-  _ZZ_DOT[repo]=$(head -n1 "${_ZZ_DOT[prefix]}/repo" 2>/dev/null)
-  if [[ -z ${_ZZ_DOT[repo]} ]]; then
-    echo "dotfiles: Repo directory not specified in ${_ZZ_DOT[repo]}" >&2
+  local tmp
+  tmp=$(head -n1 "${_ZZ_DOT[prefix]}/repo" 2>/dev/null)
+  tmp=${tmp/#\~/$HOME}
+  tmp="${tmp/\$HOME/$HOME}"
+  _ZZ_DOT[repo]=${tmp:-$HOME/.dotfiles}
+  if [[ ! -d ${_ZZ_DOT[repo]} ]]; then
+    echo "dotfiles: No $HOME/.dotfiles repo found or defined in ${_ZZ_DOT[prefix]}/repo file" >&2
     return 1
   fi
 
@@ -35,23 +39,21 @@ _zz_dot_init() {
     local line
     while IFS= read -r line; do
       [[ -z $line || $line == \#* ]] && continue
-      _ZZ_DOT_FOLDERS+=("${line/#\~/$HOME}")
+      tmp=${line/#\~/$HOME}
+      _ZZ_DOT_FOLDERS+=("${tmp/\$HOME/$HOME}")
     done <"$config"
   fi
 }
 
 _zz_dot_is_tracked() {
-  # Check if PWD is HOME or within DOTFILES_TRACKED_FOLDERS
-  if [[ $PWD == "$HOME" ]]; then
+  _ZZ_DOT[is_tracked]=0
+  # Check if PWD is parent of repo or within DOTFILES_TRACKED_FOLDERS
+  if [[ $PWD == "${_ZZ_DOT[repo]:h}" ]]; then
     _ZZ_DOT[is_tracked]=1
   else
-    _ZZ_DOT[is_tracked]=0
     local folder
     for folder in "${_ZZ_DOT_FOLDERS[@]}"; do
-      if [[ $PWD == $folder* ]]; then
-        _ZZ_DOT[is_tracked]=1
-        break
-      fi
+      [[ $PWD == $folder* ]] && _ZZ_DOT[is_tracked]=1 && break
     done
   fi
 }
