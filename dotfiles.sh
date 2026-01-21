@@ -4,8 +4,7 @@ typeset -ga _ZZ_DOT_FOLDERS
 
 _ZZ_DOT=(
   [git]=""       # Git binary, default homebrew install on macOS is /opt/homebrew/bin/git
-  [repo]=""      # dotfiles repo, default is $HOME/.dotfiles if no repo file found adjacent to config file
-  [prefix]=""    # install directory for dotfiles.sh, default is $HOME/.config/dotfiles
+  [repo]=""      # dotfiles repo, default is $HOME/.dotfiles if no $HOME/.config/dotfiles/repo file found
   [is_tracked]=0 # current folder tracked(1)/not-tracked(0) status, automatically determined should not be set manually
 )
 
@@ -15,20 +14,17 @@ _zz_dot_init() {
     return 1
   }
 
-  # shellcheck disable=SC2296,SC2298
-  _ZZ_DOT[prefix]="${${(%):-%x}:A:h}"
-
   local tmp
-  tmp=$(head -n1 "${_ZZ_DOT[prefix]}/repo" 2>/dev/null)
+  tmp=$(head -n1 "$HOME/.config/dotfiles/repo" 2>/dev/null)
   tmp=${tmp/#\~/$HOME}
   tmp="${tmp/\$HOME/$HOME}"
   _ZZ_DOT[repo]=${tmp:-$HOME/.dotfiles}
   if [[ ! -d ${_ZZ_DOT[repo]} ]]; then
-    echo "dotfiles: No $HOME/.dotfiles repo found or defined in ${_ZZ_DOT[prefix]}/repo file" >&2
+    echo "dotfiles: No $HOME/.dotfiles repo found or defined in file $HOME/.config/dotfiles/repo " >&2
     return 1
   fi
 
-  local config="${_ZZ_DOT[prefix]}/config"
+  local config="$HOME/.config/dotfiles/config"
   if [[ ! -f $config ]]; then
     echo "dotfiles: Config file not found at $config" >&2
     return 1
@@ -61,7 +57,9 @@ _zz_dot_is_tracked() {
 _zz_dot_cmd() {
   # Return whether dotfiles or git binary is being used
   if ((_ZZ_DOT[is_tracked])); then
-    echo "${_ZZ_DOT[prefix]}/dotfiles.sh"
+    ## shellcheck disable=SC2296,SC2298
+    # echo "${${(%):-%x}:A}"
+    echo "$HOME/.local/share/dotfiles/dotfiles.sh"
   elif "${_ZZ_DOT[git]}" rev-parse --git-dir >/dev/null 2>&1; then
     echo "${_ZZ_DOT[git]}"
   else
@@ -70,10 +68,11 @@ _zz_dot_cmd() {
 }
 
 _zz_dot_status_line() {
-  local cmd, branch, porcelain, statusline
+  local cmd, repo, branch, porcelain, statusline
 
   cmd="${_ZZ_DOT[git]}"
-  ((_ZZ_DOT[is_tracked])) && cmd+=" --git-dir=$HOME/.dotfiles --work-tree=$HOME"
+  repo="${_ZZ_DOT[repo]}"
+  ((_ZZ_DOT[is_tracked])) && cmd+=" --git-dir=$repo --work-tree=${repo:h}}"
 
   # Get branch name
   branch=$($cmd rev-parse --abbrev-ref HEAD 2>/dev/null)
@@ -101,7 +100,23 @@ _zz_dot_status_line() {
     [[ $untracked -gt 0 ]] && statusline="${statusline} ?$untracked"
   fi
   echo "$statusline"
-  return 0
+}
+
+_zz_dot_status() {
+  if [[ $1 == "--porcelain" ]]; then
+    $_DOTFILES_GIT status --porcelain
+  else
+    $_DOTFILES_GIT "$@"
+    local untracked
+    untracked=$($_DOTFILES_GIT ls-files --others --exclude-standard "${_ZZ_DOT_FOLDERS[@]}")
+    if [[ -n "$untracked" ]]; then
+      printf "\n%s\n%s\n" "Untracked files in tracked folders:" '(use "git add <file>..." to include in what will be committed)'
+      echo -e "\033[31m"
+      # shellcheck disable=SC2001
+      echo "$untracked" | sed 's/^/\t/'
+      echo -e "\033[0m"
+    fi
+  fi
 }
 
 dotfiles() {
@@ -109,34 +124,24 @@ dotfiles() {
 
   # Initialize on first run or could remove if performance not an issue
   [[ -z ${_ZZ_DOT[git]} ]] && _zz_dot_init
-
   _zz_dot_is_tracked
 
-  [[ $1 == "git-cmd" ]] && _zz_dot_cmd
+  [[ $1 == "git-cmd" ]] && _zz_dot_cmd && return 0
 
-  # if ((_ZZ_DOT[is_tracked])); then
-  #   DOTFILES_GIT="${_ZZ_DOT[git]} --git-dir=$HOME/.dotfiles --work-tree=$HOME"
-  #   if [[ $1 == "status" ]]; then
-  #     if [[ $2 == "--porcelain" ]]; then
-  #       $DOTFILES_GIT status --porcelain
-  #     else
-  #       $DOTFILES_GIT "$@"
-  #       untracked=$($DOTFILES_GIT ls-files --others --exclude-standard "${_ZZ_DOT_FOLDERS[@]}")
-  #       if [[ -n "$untracked" ]]; then
-  #         printf "\n%s\n%s\n" "Untracked files in tracked folders:" '(use "git add <file>..." to include in what will be committed)'
-  #         echo -e "\033[31m"
-  #         # shellcheck disable=SC2001
-  #         echo "$untracked" | sed 's/^/\t/'
-  #         echo -e "\033[0m"
-  #       fi
-  #     fi
-  #   elif [[ $1 == "clean" ]]; then
-  #     $DOTFILES_GIT clean "$@" "${_ZZ_DOT_FOLDERS[@]}"
-  #   else
-  #     $DOTFILES_GIT "$@"
-  #   fi
-  # else
-  #   $GIT_BINARY "$@"
-  # fi
+  if ((_ZZ_DOT[is_tracked])); then
+    local repo
+    repo="${_ZZ_DOT[repo]}"
+    _DOTFILES_GIT="${_ZZ_DOT[git]} --git-dir=$repo --work-tree=${repo:h}"
+    if [[ $1 == "status" ]]; then
+      _zz_dot_status "$2"
+    elif [[ $1 == "clean" ]]; then
+      $_DOTFILES_GIT clean "$@" "${_ZZ_DOT_FOLDERS[@]}"
+    else
+      $_DOTFILES_GIT "$@"
+    fi
+  else
+    ${_ZZ_DOT[git]} "$@"
+  fi
+
   printf "dotfiles: %.6fs\n" $((EPOCHREALTIME - tic)) >&2
 }
