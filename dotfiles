@@ -82,7 +82,7 @@ _zz_dot_status_line() {
         ((s)) && _ZD[prompt]+=" ?$s" # untracked
     fi
 
-    (($#)) && [[ $1 == "--echo" ]] && echo "${_ZD[prompt]}"
+    echo "${_ZD[prompt]}"
 }
 
 _zz_dot_status() {
