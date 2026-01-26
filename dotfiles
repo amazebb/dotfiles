@@ -1,8 +1,10 @@
 # shellcheck disable=SC2128
+# SC2128 disbales all the uses of $($_ZEX ...)
+#
 # Manage dotfiles with Git bare repo.
 typeset -gA _ZD  # Associative array, see below definition for explanation
 typeset -ga _ZDF # Tracked folders for dotfiles repo $HOME/.config/dotfiles/config
-typeset -ga _ZEX # Path to git binary if normal repo otherise dotfiles
+typeset -ga _ZEX # Path to git binary if normal repo otherwise dotfiles
 
 _ZD=(
     [git]=""    # Git binary, default homebrew install on macOS is /opt/homebrew/bin/git
@@ -27,33 +29,22 @@ _zz_dot_init() {
         return 1
     fi
 
-    local config="$HOME/.config/dotfiles/config"
-    if [[ ! -f $config ]]; then
-        echo "dotfiles: Config file not found at $config" >&2
-        return 1
-    fi
+    # shellcheck disable=SC2296
+    _ZDF=("${(@f)$("${_ZD[git]}" -C "${_ZD[repo]:h}" --git-dir="${_ZD[repo]}" --work-tree="${_ZD[repo]:h}" ls-files \
+        --full-name --exclude-standard | xargs dirname | sort -u | sed "s|^|${_ZD[repo]:h}/|")}")
 
-    if ((!${#_ZDF[@]})); then
-        _ZDF=()
-        local line
-        while IFS= read -r line; do
-            [[ -z $line || $line == \#* ]] && continue
-            tmp=${line/#\~/$HOME}
-            _ZDF+=("${tmp/\$HOME/$HOME}")
-        done <"$config"
-    fi
+    [[ "${_ZDF[1]}" == ${_ZD[repo]:h}/. ]] && _ZDF[1]=${_ZD[repo]:h}
 }
 
 _zz_dot_is_tracked() {
+    [[ -z ${_ZD[git]} ]] && _zz_dot_init
+
     _ZD[track]=0
-    if [[ $PWD == "${_ZD[repo]:h}" ]]; then
-        _ZD[track]=1
-    else
-        local folder
-        for folder in "${_ZDF[@]}"; do
-            [[ $PWD == $folder* ]] && _ZD[track]=1 && break
-        done
-    fi
+
+    local folder
+    for folder in "${_ZDF[@]}"; do
+        [[ $PWD == "$folder" ]] && _ZD[track]=1 && break
+    done
 
     _ZEX=("${_ZD[git]}")
     if ((_ZD[track])); then
@@ -85,51 +76,20 @@ _zz_dot_status_line() {
     echo "${_ZD[prompt]}"
 }
 
-_zz_dot_status() {
-    $_ZEX "$@"
-    local untracked
-    untracked=$($_ZEX ls-files --others --exclude-standard "${_ZDF[@]}")
-    if [[ -n "$untracked" ]]; then
-        printf "\n%s\n%s\n" "Untracked files in tracked folders:" '(use "git add <file>..." to include in what will be committed)'
-        echo -e "\033[31m"
-        # shellcheck disable=SC2001
-        echo "$untracked" | sed 's/^/\t/'
-        echo -e "\033[0m"
-    fi
-}
-
-_zz_dot_track_status() {
-    # Returns (1)tracked dotfiles folder, otherwise (0)
-    echo ${_ZD[track]}
-}
-
 dotfiles() {
-    # Initialize on first run or could remove if performance not an issue
-    [[ -z ${_ZD[git]} ]] && _zz_dot_init
+    (($# == 0)) && _zz_dot_init && return 0
+
     _zz_dot_is_tracked
 
     case $1 in
     stline)
-        shift
         _zz_dot_status_line "$@"
         ;;
-    track) _zz_dot_track_status ;;
+    track)
+        echo "${_ZD[track]}"
+        ;;
     *)
-        if ((_ZD[track])); then
-            case $1 in
-            status)
-                shift
-                _zz_dot_status "$@"
-                ;;
-            clean)
-                shift
-                "$_ZEX" clean "$@" "${_ZDF[@]}"
-                ;;
-            *) $_ZEX "$@" ;;
-            esac
-        else
-            git "$@"
-        fi
+        $_ZEX "$@"
         ;;
     esac
 }
