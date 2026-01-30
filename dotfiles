@@ -88,6 +88,9 @@ dotfiles() {
     track)
         echo "${_ZD[track]}"
         ;;
+    getrepo)
+       echo ${$($_ZEX rev-parse --absolute-git-dir)}
+        ;;
     *)
         $_ZEX "$@"
         ;;
