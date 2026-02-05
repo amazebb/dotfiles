@@ -30,7 +30,8 @@ _zz_dot_init() {
     fi
 
     # shellcheck disable=SC2296
-    _ZDF=("${(@f)$("${_ZD[git]}" -C "${_ZD[repo]:h}" --git-dir="${_ZD[repo]}" --work-tree="${_ZD[repo]:h}" ls-files \
+    _ZDF=("${(@f)$("${_ZD[git]}" -C "${_ZD[repo]:h}" \
+        --git-dir="${_ZD[repo]}" --work-tree="${_ZD[repo]:h}" ls-files \
         --full-name --exclude-standard | xargs dirname | sort -u | sed "s|^|${_ZD[repo]:h}/|")}")
 
     [[ "${_ZDF[1]}" == ${_ZD[repo]:h}/. ]] && _ZDF[1]=${_ZD[repo]:h}
