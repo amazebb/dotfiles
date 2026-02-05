@@ -21,7 +21,7 @@ This allows tracking dotfiles without interfering with other git repos in the ho
 - `~/.config/dotfiles/repo`: Optional file containing custom bare repo path (supports `~` and `$HOME` expansion)
 - `~/.config/.gitignore`: Tracked files and folders are defined in the `.gitignore` file
 
-> [!IMPORTANT]: 
+> [!IMPORTANT] 
 > Tracked folders are a bit of a :chicken: and :egg: problem.
 > Since git does not have a direct way of telling you what folders are being tracked 
 > after you have setup your `.gitignore` file, we use `ls-files` to determine the tracked folders.
