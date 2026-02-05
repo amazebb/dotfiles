@@ -11,6 +11,7 @@ _ZD=(
     [repo]=""   # Dotfiles repo, default is $HOME/.dotfiles if no $HOME/.config/dotfiles/repo file found
     [track]=0   # Current folder tracked(1)/not-tracked(0) status, automatically determined
     [prompt]="" # Git status summary to use for prompt
+    [gitdir]="" # Absolute path to repo, git or dotfiles, latter same as [repo]
 )
 
 _zz_dot_init() {
@@ -57,6 +58,7 @@ _zz_dot_is_tracked() {
 
 _zz_dot_status_line() {
     # Get branch name
+    _ZD[gitdir]=$($_ZEX rev-parse --absolute-git-dir)
     _ZD[prompt]=$($_ZEX rev-parse --abbrev-ref HEAD 2>/dev/null)
     [[ -z ${_ZD[prompt]} ]] && return 1
 
@@ -73,8 +75,6 @@ _zz_dot_status_line() {
         s=$(echo "$porcelain" | grep -c "^??")
         ((s)) && _ZD[prompt]+=" ?$s" # untracked
     fi
-
-    echo "${_ZD[prompt]}"
 }
 
 dotfiles() {
@@ -83,14 +83,12 @@ dotfiles() {
     _zz_dot_is_tracked
 
     case $1 in
-    stline)
-        _zz_dot_status_line "$@"
+    --zsh-prompt)
+        _zz_dot_status_line
         ;;
-    track)
-        echo "${_ZD[track]}"
-        ;;
-    getrepo)
-       echo ${$($_ZEX rev-parse --absolute-git-dir)}
+    --print-status)
+        _zz_dot_status_line
+        printf "%s\n%s\n%s\n" "${_ZD[prompt]}" "${_ZD[track]}" "${_ZD[gitdir]}"
         ;;
     *)
         $_ZEX "$@"
