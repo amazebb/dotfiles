@@ -1,65 +1,45 @@
-# shellcheck disable=SC2128
-# SC2128 disbales all the uses of $($_ZEX ...)
+# shellcheck disable=SC2128,SC2125,SC2296,SC2299,SC1087
 #
 # Manage dotfiles with Git bare repo.
 typeset -gA _ZD  # Associative array, see below definition for explanation
 typeset -ga _ZDF # Tracked folders for dotfiles repo $HOME/.config/dotfiles/config
 typeset -ga _ZEX # Path to git binary if normal repo otherwise dotfiles
+typeset -g  _ZDL # Last path
 
 _ZD=(
-    [git]=""    # Git binary, default homebrew install on macOS is /opt/homebrew/bin/git
-    [repo]=""   # Dotfiles repo, default is $HOME/.dotfiles if no $HOME/.config/dotfiles/repo file found
-    [track]=0   # Current folder tracked(1)/not-tracked(0) status, automatically determined
-    [prompt]="" # Git status summary to use for prompt
-    [gitdir]="" # Absolute path to repo, git or dotfiles, latter same as [repo]
+    [repo]="$HOME/.dotfiles"    # Dotfiles repo
+    [track]=0                   # Current folder tracked(1)/not-tracked(0) status, automatically determined
+    [prompt]=""                 # Git status summary to use for prompt
+    [gitdir]=""                 # Absolute path to repo, git or dotfiles, latter same as [repo]
 )
 
 _zz_dot_init() {
-    _ZD[git]=${_ZD[git]:-$(command -v git)} || {
-        echo "dotfiles: git not found in PATH" >&2
-        return 1
-    }
-
-    local tmp
-    tmp=$(head -n1 "$HOME/.config/dotfiles/repo" 2>/dev/null)
-    tmp=${tmp/#\~/$HOME}
-    tmp=${tmp/\$HOME/$HOME}
-    _ZD[repo]=${tmp:-$HOME/.dotfiles}
-    if [[ ! -d ${_ZD[repo]} ]]; then
-        echo "dotfiles: No $HOME/.dotfiles repo found or defined in file $HOME/.config/dotfiles/repo " >&2
-        return 1
-    fi
-
-    # shellcheck disable=SC2296
-    _ZDF=("${(@f)$("${_ZD[git]}" -C "${_ZD[repo]:h}" \
+    [[ $(command -v git) ]] || (echo "dotfiles: 'git' command not found in PATH" >&2; return 1)
+    [[ -d ${_ZD[repo]} ]] || (echo "dotfiles: No ${_ZD[repo]} repo found" >&2; return 1)
+    
+    _ZDF=("${(@f)$(git -C "${_ZD[repo]:h}" \
         --git-dir="${_ZD[repo]}" --work-tree="${_ZD[repo]:h}" ls-files \
         --full-name --exclude-standard | xargs dirname | sort -u | sed "s|^|${_ZD[repo]:h}/|")}")
 
     [[ "${_ZDF[1]}" == ${_ZD[repo]:h}/. ]] && _ZDF[1]=${_ZD[repo]:h}
+    _ZDL=""
 }
 
 _zz_dot_is_tracked() {
-    [[ -z ${_ZD[git]} ]] && _zz_dot_init
-
+    [[ $_ZDL == "$PWD" ]] && return 0
     _ZD[track]=0
-
-    local folder
     for folder in "${_ZDF[@]}"; do
         [[ $PWD == "$folder" ]] && _ZD[track]=1 && break
     done
-
-    _ZEX=("${_ZD[git]}")
-    if ((_ZD[track])); then
-        local repo
-        repo=${_ZD[repo]}
-        _ZEX+=("--git-dir=$repo" "--work-tree=${repo:h}")
-    fi
+    ((_ZD[track])) && _ZEX=("git" "--git-dir=${_ZD[repo]}" "--work-tree=${${_ZD[repo]}:h}") || _ZEX=("git")
+    _ZDL=$PWD
 }
 
 _zz_dot_status_line() {
-    # Get branch name
-    _ZD[gitdir]=$($_ZEX rev-parse --absolute-git-dir)
-    _ZD[prompt]=$($_ZEX rev-parse --abbrev-ref HEAD 2>/dev/null)
+    local lines=("${(@f)$($_ZEX rev-parse --absolute-git-dir --abbrev-ref HEAD 2>/dev/null)}")
+    _ZD[gitdir]=$lines[1]
+    _ZD[prompt]=$lines[2]
+
     [[ -z ${_ZD[prompt]} ]] && return 1
 
     # Check git status for changes
@@ -75,20 +55,17 @@ _zz_dot_status_line() {
         s=$(echo "$porcelain" | grep -c "^??")
         ((s)) && _ZD[prompt]+=" ?$s" # untracked
     fi
+
+    (($#>1)) && printf "%s\n%s\n%s\n" "${_ZD[prompt]}" "${_ZD[track]}" "${_ZD[gitdir]}"
 }
 
 dotfiles() {
-    (($# == 0)) && _zz_dot_init && return 0
-
+    [[ -z $_ZDL ]] && _zz_dot_init
     _zz_dot_is_tracked
 
     case $1 in
     --zsh-prompt)
-        _zz_dot_status_line
-        ;;
-    --print-status)
-        _zz_dot_status_line
-        printf "%s\n%s\n%s\n" "${_ZD[prompt]}" "${_ZD[track]}" "${_ZD[gitdir]}"
+        _zz_dot_status_line "$@"
         ;;
     *)
         $_ZEX "$@"
