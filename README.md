@@ -3,16 +3,18 @@ ZSH dotfiles management
 
 ## Install
 
-Clone the repo, for instance into `~/.local/share/zsh/site-functions`, and then add an autoload to
-`~/.zshenv` file. After this your `dotfiles` command can be aliased to something
-more convenient in your `~/.zshrc` file. 
+Clone the repo, for instance into `~/.local/share/zsh/site-functions`, and then
+add an autoload to `~/.zshenv`. 
 
-Example `~/.zshenv` file:
+`~/.zshenv` file:
 
 ```zsh
 fpath+=(~/.local/share/zsh/site-functions/dotfiles)
 autoload -Uk +X dotfiles
 ```
+
+After this your `dotfiles` command can be
+aliased to something more convenient in `~/.zshrc`. 
 
 ## Overview
 
@@ -77,8 +79,14 @@ determines this based on `$PWD` and comparing with `_$ZDF`
 ### Custom Subcommands
 
 - `dotfiles --zsh-prompt [-print]`: `--zsh-prompt` on its own is used to update
-  state and used by `zsh-prompt` function, (branch name with
-  staged/unstaged/untracked counts). An additional option, `--print-status`
-  prints to stdout the current branch name, 1 if dotfiles repo, and path to
-  .git/.dotfiles folder. This is used by our statusline.lua to easier get git
-  status information.
+  state and used by [zsh-prompt](https://github.com/broeknbytes/zsh-prompt),
+  to display current branch name with staged/unstaged/untracked counts. An
+  additional option, `--print-status`
+  prints to stdout
+
+```
+  current branch name
+  1 if dotfiles repo, 0 otherwise
+  path to .git/.dotfiles folder
+```
+
