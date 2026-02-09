@@ -1,18 +1,44 @@
 # Dotfiles
-dotfiles management 
+ZSH dotfiles management 
+
+## Install
+
+Clone the repo, for instance into `~/.local/share/zsh/site-functions`, and then add an autoload to
+`~/.zshenv` file. After this your `dotfiles` command can be aliased to something
+more convenient in your `~/.zshrc` file. 
+
+Example `~/.zshenv` file:
+
+```zsh
+fpath+=(~/.local/share/zsh/site-functions/dotfiles)
+autoload -Uk +X dotfiles
+```
 
 ## Overview
 
-This is a zsh plugin for managing dotfiles using a Git bare repository. 
-It provides two scripts:
+### Why
+- why anything
+- learn ZSH
+- learn Git plumbing
+- make dotfiles and zsh prompts work with sha1 and sha256
+- use AI to help flesh out syntax, and help write commit messages
+- take ownership of your dotfiles
+- clean house
+
+This repo contains two files that can be run under zsh, there is no attempt at
+POSIX or full bash compatibility as the author did not need those features.
+This was all developed on macOS, so no guarantees for other OS'.
 
 - **dotfiles**: A zsh function that wraps git commands for the bare repo, it
-  falls back to regular `git` command when in a regualr repo and supports both
+  falls back to regular `git` command when in a regular repo and supports both
   `sha1` and `sha256`.
 - **bootstrap**: A bash script for initial setup that clones the bare repo and
   handles file conflicts
 
 ## Architecture
+
+The following is not needed to use `dotfiles` or `bootstrap`, but outlines how
+things work at a high level.
 
 ### Bare Repository Pattern
 
