@@ -16,7 +16,7 @@ _ZD=(
 _zz_dot_init() {
     [[ $(command -v git) ]] || (echo "dotfiles: 'git' command not found in PATH" >&2; return 1)
     [[ -d ${_ZD[repo]} ]] || (echo "dotfiles: No ${_ZD[repo]} repo found" >&2; return 1)
-    
+
     _ZDF=("${(@f)$(git -C "${_ZD[repo]:h}" \
         --git-dir="${_ZD[repo]}" --work-tree="${_ZD[repo]:h}" ls-files \
         --full-name --exclude-standard | xargs dirname | sort -u | sed "s|^|${_ZD[repo]:h}/|")}")
@@ -64,11 +64,11 @@ dotfiles() {
     _zz_dot_is_tracked
 
     case $1 in
-    --zsh-prompt)
-        _zz_dot_status_line "$@"
-        ;;
-    *)
-        $_ZEX "$@"
-        ;;
+        --zsh-prompt)
+            _zz_dot_status_line "$@"
+            ;;
+        *)
+            $_ZEX "$@"
+            ;;
     esac
 }
