@@ -8,10 +8,10 @@ typeset -ga _ZEX # Path to git binary if normal repo otherwise dotfiles
 typeset -g  _ZDL # Last path
 
 _ZD=(
-    [repo]="$HOME/.dotfiles"    # Dotfiles repo
-    [track]=0                   # Current folder tracked(1)/not-tracked(0) status, automatically determined
-    [prompt]=""                 # Git status summary to use for prompt
-    [gitdir]=""                 # Absolute path to repo, git or dotfiles, latter same as [repo]
+    [repo]="$HOME/.dotfiles"  # Dotfiles repo
+    [track]=0                 # Current folder tracked(1)/not-tracked(0) status, automatically determined
+    [prompt]=""               # Git status summary to use for prompt
+    [gitdir]=""               # Absolute path to repo, .git or .dotfiles, latter same as [repo]
 )
 
 _zz_dot_init() {
