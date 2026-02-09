@@ -1,4 +1,5 @@
-# shellcheck disable=SC2128,SC2125,SC2296,SC2299,SC1087
+# shellcheck disable=SC2296
+# shellcheck disable=SC2299
 #
 # Manage dotfiles with Git bare repo.
 typeset -gA _ZD  # Associative array, see below definition for explanation
@@ -36,15 +37,15 @@ _zz_dot_is_tracked() {
 }
 
 _zz_dot_status_line() {
-    local lines=("${(@f)$($_ZEX rev-parse --absolute-git-dir --abbrev-ref HEAD 2>/dev/null)}")
-    _ZD[gitdir]=$lines[1]
-    _ZD[prompt]=$lines[2]
+    local lines=("${(@f)$("${_ZEX[@]}" rev-parse --absolute-git-dir --abbrev-ref HEAD 2>/dev/null)}")
+    _ZD[gitdir]=${lines[1]}
+    _ZD[prompt]=${lines[2]}
 
     [[ -z ${_ZD[prompt]} ]] && return 1
 
     # Check git status for changes
     local porcelain
-    porcelain=$($_ZEX status --porcelain 2>/dev/null)
+    porcelain=$("${_ZEX[@]}" status --porcelain 2>/dev/null)
 
     if [[ -n $porcelain ]]; then
         local -i s=0
@@ -68,7 +69,7 @@ dotfiles() {
             _zz_dot_status_line "$@"
             ;;
         *)
-            $_ZEX "$@"
+            "${_ZEX[@]}" "$@"
             ;;
     esac
 }
