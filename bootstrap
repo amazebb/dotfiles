@@ -5,24 +5,23 @@ set -euo pipefail
 
 DOTFILES_DIR="$HOME/.dotfiles"
 REPO_URL="https://github.com/broeknbytes/dotfiles.git"
-DRY_RUN=false
+DRY_RUN=true
 TMPDIR=""
 
 usage() {
     cat <<'EOF'
-Usage: bootstrap [--dry-run] [--help]
+Usage: bootstrap [-n | --dry-run] [-h | --help] [-d | --dir] [-r | --repo]
 
 Clone a bare dotfiles repository and check out tracked files into $HOME.
 
 Options:
-  --dry-run   Clone to a temp directory, show conflicts/diffs, then exit
-              without modifying $HOME
-  --help      Show this help message
-
-Environment:
-  DOTFILES_DIR defaults to ~/.dotfiles
-  REPO_URL     defaults to https://github.com/broeknbytes/dotfiles.git
+  -h, --help    Show this help message
+  -n, --dry-run Clone to a temp directory, show conflicts/diffs, then exit
+                without modifying $HOME, default: true, false to checkout
+  -d, --dir     Dotfiles repo folder, default: $HOME/.dotfiles
+  -r, --repo    Repo to clone from, default: https://github.com/broeknbytes/dotfiles.git
 EOF
+    exit 0
 }
 
 cleanup() {
@@ -38,18 +37,33 @@ die() {
 }
 
 # --- 1. Parse flags ---
-for arg in "$@"; do
-    case "$arg" in
-    --dry-run) DRY_RUN=true ;;
-    --help) usage ;;
-    *) die "unknown option: $arg" ;;
+while (($#)); do
+    case "$1" in
+    -n | --dry-run) DRY_RUN=true ;;
+    -h | --help) usage ;;
+    -d | --dir)
+        [[ -z ${2:-} ]] && die "-d|--dir requires an argument"
+        DOTFILES_DIR=$2
+        shift
+        ;;
+    -r | --repo)
+        [[ -z ${2:-} ]] && die "-r|--repo requires an argument"
+        REPO_URL=$2
+        shift
+        ;;
+    --)
+        shift
+        break
+        ;;
+    *) die "unknown option: $1" ;;
     esac
+    shift
 done
 
 # --- 2. Pre-flight checks ---
 command -v git >/dev/null 2>&1 || die "git is not installed"
 
-if [[ -e "$DOTFILES_DIR" ]]; then
+if ! $DRY_RUN && [[ -e "$DOTFILES_DIR" ]]; then
     die "$DOTFILES_DIR already exists; remove it first or use a different path"
 fi
 
@@ -57,7 +71,7 @@ fi
 TMPDIR=$(mktemp -d)
 trap cleanup EXIT
 
-echo "Cloning bare repository into temp directory..."
+echo "Cloning from $REPO_URL"
 git clone --bare "$REPO_URL" "$TMPDIR/repo" || die "git clone failed"
 
 # Helper: run git against the temp bare repo with $HOME as work tree
@@ -71,7 +85,7 @@ FILES=$(_git ls-files)
 CONFLICTS=()
 while IFS= read -r file; do
     [[ -z "$file" ]] && continue
-    if [[ -e "$HOME/$file" ]]; then
+    if [[ -e "$HOME/$file" ]] && ! diff -q "$HOME/$file" <(_git show "HEAD:$file") >/dev/null 2>&1; then
         CONFLICTS+=("$file")
     fi
 done <<<"$FILES"
