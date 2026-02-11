@@ -82,12 +82,12 @@ _git() {
 }
 
 # --- 4. Compare tracked files against $HOME ---
-FILES=$(_git ls-files)
+FILES=$(_git ls-tree -r --name-only HEAD)
 
 CONFLICTS=()
 while IFS= read -r file; do
     [[ -z "$file" ]] && continue
-    if [[ -e "$HOME/$file" ]] && ! diff -q "$HOME/$file" <(_git show "HEAD:$file") >/dev/null 2>&1; then
+    if [[ -e "$HOME/$file" || -L "$HOME/$file" ]] && ! diff -q "$HOME/$file" <(_git show "HEAD:$file") >/dev/null 2>&1; then
         CONFLICTS+=("$file")
     fi
 done <<<"$FILES"
