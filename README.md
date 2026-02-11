@@ -3,10 +3,9 @@ ZSH dotfiles management
 
 ## Install
 
-Clone the repo, for instance into `~/.local/share/zsh/site-functions`, and then
-add an autoload to `~/.zshenv`. 
+Clone the repo into `~/.local/share/zsh/site-functions`
 
-`~/.zshenv` file:
+Add an autoload to `~/.zshenv`. 
 
 ```zsh
 fpath+=(~/.local/share/zsh/site-functions/dotfiles)
@@ -17,15 +16,6 @@ After this your `dotfiles` command can be
 aliased to something more convenient in `~/.zshrc`. 
 
 ## Overview
-
-### Why
-- why anything
-- learn ZSH
-- learn Git plumbing
-- make dotfiles and zsh prompts work with sha1 and sha256
-- use AI to help flesh out syntax, and help write commit messages
-- take ownership of your dotfiles
-- clean house
 
 This repo contains two files that can be run under zsh, there is no attempt at
 POSIX or full bash compatibility as the author did not need those features.
@@ -89,4 +79,14 @@ determines this based on `$PWD` and comparing with `_$ZDF`
   1 if dotfiles repo, 0 otherwise
   path to .git/.dotfiles folder
 ```
+
+## Why ?
+- Learn some ZSH
+- Learn Git plumbing
+- Make dotfiles and zsh prompts work with `sha1` and `sha256`
+- Take ownership of your dotfiles
+- Use AI to help flesh out syntax, and help write commit messages
+- Clean house
+- Does any of this matter ? probably not...
+- Then why , go to step 1...
 
