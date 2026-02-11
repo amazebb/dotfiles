@@ -4,7 +4,7 @@
 set -euo pipefail
 
 DOTFILES_DIR="$HOME/.dotfiles"
-REPO_URL="" #https://github.com/broeknbytes/dotfiles.git"
+REPO_URL=""
 DRY_RUN=true
 TMPDIR=""
 
