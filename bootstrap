@@ -92,10 +92,14 @@ _git() {
 FILES=$(_git ls-tree -r --name-only HEAD)
 
 CONFLICTS=()
+EXISTING=()
 while IFS= read -r file; do
     [[ -z "$file" ]] && continue
-    if [[ -e "$HOME/$file" || -L "$HOME/$file" ]] && ! diff -q "$HOME/$file" <(_git show "HEAD:$file") >/dev/null 2>&1; then
-        CONFLICTS+=("$file")
+    if [[ -e "$HOME/$file" || -L "$HOME/$file" ]]; then
+        EXISTING+=("$file")
+        if ! diff -q "$HOME/$file" <(_git show "HEAD:$file") >/dev/null 2>&1; then
+            CONFLICTS+=("$file")
+        fi
     fi
 done <<<"$FILES"
 
@@ -135,16 +139,15 @@ else
     fi
 fi
 
-# --- 6. Backup conflicting files ---
-if ((${#CONFLICTS[@]})); then
+# --- 6. Backup all existing files so checkout succeeds ---
+if ((${#EXISTING[@]})); then
     BACKUP_DIR="$HOME/.dotfiles-backup-$(date +%Y%m%d-%H%M%S)"
     mkdir -p "$BACKUP_DIR"
-    for file in "${CONFLICTS[@]}"; do
+    for file in "${EXISTING[@]}"; do
         mkdir -p "$BACKUP_DIR/$(dirname "$file")"
         mv "$HOME/$file" "$BACKUP_DIR/$file"
-        echo "  Backed up: $file"
     done
-    echo "Backup complete: $BACKUP_DIR"
+    echo "Backed up ${#EXISTING[@]} file(s) to $BACKUP_DIR"
     echo ""
 fi
 
