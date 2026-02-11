@@ -4,7 +4,7 @@
 set -euo pipefail
 
 DOTFILES_DIR="$HOME/.dotfiles"
-REPO_URL="https://github.com/broeknbytes/dotfiles.git"
+REPO_URL="" #https://github.com/broeknbytes/dotfiles.git"
 DRY_RUN=true
 TMPDIR=""
 
@@ -20,7 +20,7 @@ Options:
                 without modifying $HOME
   -f, --force   Overwrite --dry-run mode if you are sure and checkout files              
   -d, --dir     Dotfiles repo folder, default: $HOME/.dotfiles
-  -r, --repo    Repo to clone from, default: https://github.com/broeknbytes/dotfiles.git
+  -r, --repo    Repo to clone from
 EOF
     exit 0
 }
@@ -36,6 +36,8 @@ die() {
     echo "error: $1" >&2
     exit 1
 }
+
+((!$#)) && usage
 
 # --- 1. Parse flags ---
 while (($#)); do
@@ -61,6 +63,8 @@ while (($#)); do
     esac
     shift
 done
+
+[[ -z $REPO_URL ]] && printf "%s\n\n" "--repo URL can not be empty" && usage
 
 # --- 2. Pre-flight checks ---
 command -v git >/dev/null 2>&1 || die "git is not installed"
