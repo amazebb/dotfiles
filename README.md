@@ -3,13 +3,22 @@ ZSH dotfiles management
 
 ## Install
 
-Clone the repo and set your personal dotfiles repo URL.
+### 1. Clone
+
+Set `REPO_DOTFILE` to your personal dotfiles repo if you have one. Leave
+`INSTALL_DIR` as is unless you want to install it elsewhere.
+
 ```sh
 INSTALL_DIR="$HOME/.local/share/zsh/site-functions/dotfiles"
 REPO_DOTFILE="https://github.com/broeknbytes/dotfiles-repo.git"
 mkdir -p "$(dirname "$INSTALL_DIR")"
 git clone https://github.com/broeknbytes/dotfiles.git "$INSTALL_DIR"
 ```
+
+### 2. Bootstrap your dotfiles
+  
+If you have a dotfiles bare repository, and want to clone it then run the
+`bootstrap` function, otherwise go to the next step. 
 
 Run `bootstrap` to preview what will change (dry-run is the default).
 ```sh
@@ -21,7 +30,11 @@ If everything looks good, run with `-f` to apply.
 "$INSTALL_DIR/bootstrap" -f -r "$REPO_DOTFILE"
 ```
 
-Add the `dotfiles` function to `~/.zshenv`.
+### 3. Setup autload of dotfiles function
+
+If the dotfiles function is not already autloaded, then we need to add it to
+`~/.zshenv`.
+
 ```sh
 cat << EOF >> ~/.zshenv
 
@@ -36,9 +49,8 @@ in `~/.zshrc`.
 
 ## Overview
 
-This repo contains two files that can be run under zsh, there is no attempt at
-POSIX or full bash compatibility as of yet. This was all developed on macOS, so
-no guarantees elsewhere, including macOS.
+This repo contains two files that can be run under zsh, all developed on
+macOS, so no guarantees elsewhere, including macOS.
 
 - **dotfiles**: A zsh function that wraps git commands for the bare repo, it
   falls back to regular `git` command when in a regular repo and supports both
