@@ -3,13 +3,21 @@ ZSH dotfiles management
 
 ## Install
 
-Clone the repo into `~/.local/share/zsh/site-functions`
+Clone the repo:
+```sh
+mkdir -p ~/.local/share/zsh/site-functions
+git clone https://github.com/broeknbytes/dotfiles.git ~/.local/share/zsh/site-functions
+```
 
-Add an autoload to `~/.zshenv`. 
+Add to `~/.zshenv`. 
 
-```zsh
-fpath+=(~/.local/share/zsh/site-functions/dotfiles)
-autoload -Uk +X dotfiles
+```sh
+cat << 'EOF' >> ~/.zshenv
+
+# Custom dotfiles function
+fpath+=( ~/.local/share/zsh/site-functions/dotfiles )
+autoload -Uz dotfiles
+EOF
 ```
 
 After this your `dotfiles` command can be
@@ -18,8 +26,8 @@ aliased to something more convenient in `~/.zshrc`.
 ## Overview
 
 This repo contains two files that can be run under zsh, there is no attempt at
-POSIX or full bash compatibility as the author did not need those features.
-This was all developed on macOS, so no guarantees for other OS'.
+POSIX or full bash compatibility as of yet. This was all developed on macOS, so
+no guarantees elsewhere, including macOS.
 
 - **dotfiles**: A zsh function that wraps git commands for the bare repo, it
   falls back to regular `git` command when in a regular repo and supports both
@@ -34,10 +42,10 @@ things work at a high level.
 
 ### Bare Repository Pattern
 
-The dotfiles are stored in a bare Git repository (default: `$HOME/.dotfiles`) with
-the work tree set to the parent folder (default: `$HOME`). 
-This allows tracking dotfiles without interfering with other git repos in the
-home directory, and is one of the main reasons for the dotfiles/bare repo approach.
+The dotfiles are stored in a bare Git repository (default: `$HOME/.dotfiles`)
+with the work tree set to the parent folder (default: `$HOME`). This allows
+tracking dotfiles without interfering with other git repos in the home
+directory, and is one of the main reasons for the dotfiles/bare repo approach.
 
 ### Configuration Files
 
@@ -69,10 +77,9 @@ determines this based on `$PWD` and comparing with `_$ZDF`
 ### Custom Subcommands
 
 - `dotfiles --zsh-prompt [-print]`: `--zsh-prompt` on its own is used to update
-  state and used by [zsh-prompt](https://github.com/broeknbytes/zsh-prompt),
-  to display current branch name with staged/unstaged/untracked counts. An
-  additional option, `--print-status`
-  prints to stdout
+  state and used by [zsh-prompt](https://github.com/broeknbytes/zsh-prompt), to
+  display current branch name with staged/unstaged/untracked counts. An
+  additional option, `--print-status` prints to stdout
 
 ```
   current branch name
