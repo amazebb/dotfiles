@@ -161,6 +161,20 @@ dotfiles() {
 
 dotfiles config --local status.showUntrackedFiles no
 
+echo "The following files will be checked out to $HOME:"
+while IFS= read -r file; do
+    [[ -z "$file" ]] && continue
+    printf '  %s\n' "$file"
+done <<<"$(dotfiles ls-tree -r --name-only HEAD)"
+echo ""
+
+read -p "Proceed with checkout? [y/N] " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Aborted."
+    exit 1
+fi
+
 echo "Checking out dotfiles..."
 if dotfiles checkout; then
     echo "Dotfiles installed successfully."
