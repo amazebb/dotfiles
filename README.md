@@ -3,19 +3,34 @@ ZSH dotfiles management
 
 ## Install
 
-Clone the repo:
+Clone the repo, you can change INSTALL_DIR and the REPO_DOTFILE as needed.
 ```sh
-mkdir -p ~/.local/share/zsh/site-functions
-git clone https://github.com/broeknbytes/dotfiles.git ~/.local/share/zsh/site-functions
+INSTALL_DIR="~/.local/share/zsh/site-functions/"
+mkdir -p "$INSTALL_DIR"
+git clone https://github.com/broeknbytes/dotfiles.git "$INSTALL_DIR"
+cd "$INSTALL_DIR"
 ```
 
-Add to `~/.zshenv`. 
+Run the `bootstrap` function in `--dry-run` mode to ensure we correctly backup current files and
+restore your personal dotfiles.
+
+```sh
+REPO_DOTFILE="https://github.com/broeknbytes/dotfiles-repo.git"
+./bootstrap -r $REPO_DOTFILE
+```
+
+To proceed run:
+```sh
+./bootstrap -f -r $REPO_DOTFILE
+```
+
+Add `dotfiles` function to `~/.zshenv`. 
 
 ```sh
 cat << 'EOF' >> ~/.zshenv
 
 # Custom dotfiles function
-fpath+=( ~/.local/share/zsh/site-functions/dotfiles )
+fpath+=( "$INSTALL_DIR/dotfiles" )
 autoload -Uz dotfiles
 EOF
 ```

@@ -17,7 +17,8 @@ Clone a bare dotfiles repository and check out tracked files into $HOME.
 Options:
   -h, --help    Show this help message
   -n, --dry-run Clone to a temp directory, show conflicts/diffs, then exit
-                without modifying $HOME, default: true, false to checkout
+                without modifying $HOME
+  -f, --force   Overwrite --dry-run mode if you are sure and checkout files              
   -d, --dir     Dotfiles repo folder, default: $HOME/.dotfiles
   -r, --repo    Repo to clone from, default: https://github.com/broeknbytes/dotfiles.git
 EOF
@@ -40,6 +41,7 @@ die() {
 while (($#)); do
     case "$1" in
     -n | --dry-run) DRY_RUN=true ;;
+    -f | --force) DRY_RUN=false ;;
     -h | --help) usage ;;
     -d | --dir)
         [[ -z ${2:-} ]] && die "-d|--dir requires an argument"
