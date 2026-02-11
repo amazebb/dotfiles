@@ -7,6 +7,7 @@ DOTFILES_DIR="$HOME/.dotfiles"
 REPO_URL=""
 DRY_RUN=true
 TMPDIR=""
+VERBOSE=false
 
 usage() {
     cat <<'EOF'
@@ -18,6 +19,7 @@ Options:
   -h, --help    Show this help message
   -n, --dry-run Clone to a temp directory, show conflicts/diffs, then exit
                 without modifying $HOME
+  -v, --verbose Show diffs of changes that would be made              
   -f, --force   Overwrite --dry-run mode if you are sure and checkout files              
   -d, --dir     Dotfiles repo folder, default: $HOME/.dotfiles
   -r, --repo    Repo to clone from
@@ -43,6 +45,7 @@ die() {
 while (($#)); do
     case "$1" in
     -n | --dry-run) DRY_RUN=true ;;
+    -v | --verbose) VERBOSE=true ;;
     -f | --force) DRY_RUN=false ;;
     -h | --help) usage ;;
     -d | --dir)
@@ -105,12 +108,14 @@ if ((${#CONFLICTS[@]})); then
     done
 
     echo ""
-    echo "Diffs (existing <- repo):"
-    for file in "${CONFLICTS[@]}"; do
-        echo "--- $file ---"
-        diff "$HOME/$file" <(_git show "HEAD:$file") || true
-        echo ""
-    done
+    if $VERBOSE; then
+        echo "Diffs (existing <- repo):"
+        for file in "${CONFLICTS[@]}"; do
+            echo "--- $file ---"
+            diff "$HOME/$file" <(_git show "HEAD:$file") || true
+            echo ""
+        done
+    fi
 
     if $DRY_RUN; then
         echo "Dry run complete. No changes were made."
