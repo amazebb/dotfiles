@@ -85,11 +85,16 @@ git clone --bare "$REPO_URL" "$TMPDIR/repo" || die "git clone failed"
 
 # Helper: run git against the temp bare repo with $HOME as work tree
 _git() {
-    git --git-dir="$TMPDIR/repo" --work-tree="$HOME" "$@"
+    git --git-dir="$TMPDIR/repo" "$@"
 }
 
 # --- 4. Compare tracked files against $HOME ---
-FILES=$(_git ls-tree -r --name-only HEAD)
+FILES=$(_git ls-tree -r --name-only HEAD 2>/dev/null)
+
+if [[ -z "$FILES" ]]; then
+    echo "No files found in repo"
+    exit 1
+fi
 
 CONFLICTS=()
 EXISTING=()
@@ -101,7 +106,15 @@ while IFS= read -r file; do
             CONFLICTS+=("$file")
         fi
     fi
+    echo "$file"
 done <<<"$FILES"
+
+read -p "Are the above dotfiles what you expect? [y/N] " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Aborted."
+    exit 1
+fi
 
 # --- 5. Show diffs and prompt ---
 if ((${#CONFLICTS[@]})); then
