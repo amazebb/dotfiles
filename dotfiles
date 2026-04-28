@@ -57,7 +57,7 @@ _zz_dot_status_line() {
         ((s)) && _ZD[prompt]+=" ?$s" # untracked
     fi
 
-    (($#>1)) && printf "%s\n%s\n%s\n" "${_ZD[prompt]}" "${_ZD[track]}" "${_ZD[gitdir]}"
+    [[ $# -gt 1 && $2 == --print-status ]] && printf "%s\n%s\n%s\n" "${_ZD[prompt]}" "${_ZD[track]}" "${_ZD[gitdir]}"
 }
 
 dotfiles() {

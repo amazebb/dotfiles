@@ -15,12 +15,16 @@ git clone https://github.com/broeknbytes/dotfiles.git "$INSTALL_DIR"
 
 ### 2. Bootstrap your dotfiles
 
-Set `REPO_DOTFILE` to your personal dotfiles repo if you have one,  otherwise
-go to the next step. 
-Run `bootstrap` to preview what will change (dry-run is the default).
+Set `REPO_DOTFILE` to your personal dotfiles repo if you have one, otherwise
+go to Step 3.
 
 ```sh
 REPO_DOTFILE="https://github.com/broeknbytes/dotfiles-repo.git"
+```
+
+Run `bootstrap` to preview what will change (dry-run is the default).
+
+```sh
 "$INSTALL_DIR/bootstrap" -r "$REPO_DOTFILE"
 ```
 
@@ -35,7 +39,7 @@ You're dotfiles repository should now be setup on your local machine.
 ### 3. Setup autload of dotfiles function
 
 If the dotfiles function is not already autloaded, then we need to add it to
-`~/.zshenv`.
+`~/.zshenv`
 
 ```sh
 cat << EOF >> ~/.zshenv
@@ -51,10 +55,10 @@ in `~/.zshrc`.
 
 ## Overview
 
-This repo contains two files that can be run under zsh, all developed on
+This repo contains two files that can be run under Zsh, all developed on
 macOS, so no guarantees elsewhere, including macOS.
 
-- **dotfiles**: A zsh function that wraps git commands for the bare repo, it
+- **dotfiles**: A Zsh function that wraps git commands for the bare repo, it
   falls back to regular `git` command when in a regular repo and supports both
   `sha1` and `sha256`.
 - **bootstrap**: A bash script for initial setup that clones the bare repo and
@@ -62,8 +66,7 @@ macOS, so no guarantees elsewhere, including macOS.
 
 ## Architecture
 
-The following is not needed to use `dotfiles` or `bootstrap`, but outlines how
-things work at a high level.
+The following outlines how things work at a high level.
 
 ### Bare Repository Pattern
 
@@ -82,16 +85,15 @@ directory, and is one of the main reasons for the dotfiles/bare repo approach.
 > not have a direct way of telling you what folders are being tracked after you
 > have setup your `.gitignore` file, we use `ls-files` to determine the tracked
 > folders. This means **you need to have something in the folder** for it to
-> be tracked. Another method would be to track folders using a separate
-> file, so its either maintain two files, or just the `.gitignore` knowing the
-> above caveat.
+> be tracked.
 
 ### Global State Variables
 
-The `dotfiles` script uses three global zsh variables:
+The `dotfiles` script uses three global Zsh variables:
 - `_ZD`: Associative array holding repo path, track status, and prompt info
 - `_ZDF`: Array of tracked folder paths derived using `ls-files`
 - `_ZEX`: Array containing git command with appropriate `--git-dir` and `--work-tree` flags
+- `_ZDL`: Last path visited
 
 ### Context-Aware Behavior
 
@@ -101,24 +103,25 @@ determines this based on `$PWD` and comparing with `_$ZDF`
 
 ### Custom Subcommands
 
-- `dotfiles --zsh-prompt [-print]`: `--zsh-prompt` on its own is used to update
-  state and used by [zsh-prompt](https://github.com/broeknbytes/zsh-prompt), to
-  display current branch name with staged/unstaged/untracked counts. An
-  additional option, `--print-status` prints to stdout
+- `dotfiles --zsh-prompt [-print]`
 
-```
-  current branch name
-  1 if dotfiles repo, 0 otherwise
-  path to .git/.dotfiles folder
-```
+This updates state and is used by 
+[zsh-prompt](https://github.com/broeknbytes/zsh-prompt), to
+  display current branch name with staged/unstaged/untracked counts. 
+
+An additional option, `--print-status` prints to stdout:
+
+  - current branch name followed by number of changes
+  - 1 if dotfiles repo, 0 standard git repo
+  - path to .git/.dotfiles folder
 
 ## Why ?
-- Learn some ZSH
+- Learn some Zsh
 - Learn Git plumbing
-- Make dotfiles and zsh prompts work with `sha1` and `sha256`
+- Make dotfiles and Zsh prompts work with `sha1` and `sha256`
 - Take ownership of your dotfiles
 - Use AI to help flesh out syntax, and help write commit messages
 - Clean house
-- Does any of this matter ? probably not...
-- Then why , go to step 1...
+- Does any of this matter? probably not...
+- Then why? go to step 1...
 
