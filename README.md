@@ -108,13 +108,13 @@ determines this based on `$PWD` and comparing with `_$ZDF`
 
 ### Custom Subcommands
 
-- `dotfiles --zsh-prompt [--print-status]`
+- `dotfiles [--zsh-prompt] [--print-status]`
 
-This updates state and is used by 
+`--zsh-prompt` - updates state used by Zsh `precmd` hook in
 [zsh-prompt](https://github.com/broeknbytes/zsh-prompt), to
   display current branch name with staged/unstaged/untracked counts. 
 
-An additional option, `--print-status` prints to stdout:
+`--print-status` - prints to stdout the following three lines:
 
   - current branch name followed by number of changes
   - 1 if dotfiles repo, 0 standard git repo

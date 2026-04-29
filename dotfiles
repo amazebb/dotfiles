@@ -57,7 +57,7 @@ _zz_dot_status_line() {
         ((s)) && _ZD[prompt]+=" ?$s" # untracked
     fi
 
-    [[ $# -gt 1 && $2 == --print-status ]] && printf "%s\n%s\n%s\n" "${_ZD[prompt]}" "${_ZD[track]}" "${_ZD[gitdir]}"
+    [[ $1 == --print-status ]] && printf "%s\n%s\n%s\n" "${_ZD[prompt]}" "${_ZD[track]}" "${_ZD[gitdir]}"
 }
 
 dotfiles() {
@@ -65,7 +65,7 @@ dotfiles() {
     _zz_dot_is_tracked
 
     case $1 in
-        --zsh-prompt)
+        --zsh-prompt | --print-status)
             _zz_dot_status_line "$@"
             ;;
         *)
