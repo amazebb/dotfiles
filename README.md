@@ -1,15 +1,20 @@
 # Dotfiles
-ZSH dotfiles management 
+Zsh dotfiles management 
 
 ## Install
 
-### 1. Clone
+### 1. Clone repo
 
-Leave `INSTALL_DIR` as is unless you want to install it elsewhere.
+Create `INSTALL_DIR` folder 
 
 ```sh
 INSTALL_DIR="$HOME/.local/share/zsh/site-functions/dotfiles"
 mkdir -p "$(dirname "$INSTALL_DIR")"
+```
+
+Clone `broeknbytes/dotfiles.git`
+
+```
 git clone https://github.com/broeknbytes/dotfiles.git "$INSTALL_DIR"
 ```
 
@@ -103,7 +108,7 @@ determines this based on `$PWD` and comparing with `_$ZDF`
 
 ### Custom Subcommands
 
-- `dotfiles --zsh-prompt [-print]`
+- `dotfiles --zsh-prompt [--print-status]`
 
 This updates state and is used by 
 [zsh-prompt](https://github.com/broeknbytes/zsh-prompt), to

@@ -1,31 +1,96 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2016
 # bootstrap - Safe bare repo dotfiles installer
 
 set -euo pipefail
+
+U() {
+    tput smul
+    printf '%s' "$*"
+    tput rmul
+}
+
+B() {
+    tput bold
+    printf '%s' "$*"
+    tput sgr0
+}
+
+I() {
+    tput sitm
+    printf '%s' "$*"
+    tput ritm
+}
+
+Q() {
+    read -r -p "$1 [y/n]: "
+    [[ ! $REPLY =~ [Yy] ]] && echo "Aborted." && exit 1
+}
+
+ask() {
+    read -r -p "$1: "
+    echo "$REPLY"
+}
+
+msg() { printf "\033[%sm%s\033[0m\n" "$2" "$1" >&2; }
+
+info() { msg "$1" 34; }
+
+warn() { msg "$1" 31 && exit 1; }
+
+argval() {
+    (($# < 2)) || [[ $2 = -* ]] && warn "Error: $1 requires a valid argument" || echo "$2"
+    # NOTE Because 'warn' is called in a sub-shell, the exit 1 does not
+    # exit immediately. The parse arguments while loop will cycle
+    # through all entered args.
+}
+
+noargs() { ((!$1)) && info "Error: no arguments provided" && usage && exit 1; }
+
+usage() {
+    cat <<EOF
+$(B NAME)
+    $(B bootstrap) - Safe bare repo dotfiles installer
+
+$(B SYNOPSIS)
+    $(B "bootstrap [-h] [-n] [-v] [-f] [-d dir] -r repo")
+
+$(B DESCRIPTION)
+    Clone a bare dotfiles repository and check out tracked files into \$HOME.
+    By default runs in dry-run mode: clones to a temp directory, shows
+    conflicts and diffs, then exits without modifying \$HOME.
+
+$(B OPTIONS)
+    $(B -h)         Show this help message
+
+    $(B -n)         Clone to a temp directory, show conflicts/diffs,
+               then exit without modifying \$HOME $(I '(default)')
+
+    $(B -v)         Show diffs of changes that would be made
+
+    $(B -f)         Override dry-run mode and check out files
+
+    $(B -d) $(U dir)     Dotfiles repo folder $(I '(default: $HOME/.dotfiles)')
+
+    $(B -r) $(U url)     Repo to clone from $(I required)
+
+$(B EXAMPLES)
+    Dry-run preview from a remote repo
+
+        bootstrap -r git@github.com:user/dotfiles.git
+
+    Apply changes after reviewing the dry-run
+
+        bootstrap -f -r git@github.com:user/dotfiles.git
+
+EOF
+}
 
 DOTFILES_DIR="$HOME/.dotfiles"
 REPO_URL=""
 DRY_RUN=true
 TMPDIR=""
 VERBOSE=false
-
-usage() {
-    cat <<'EOF'
-Usage: bootstrap [-n | --dry-run] [-h | --help] [-d | --dir] [-r | --repo]
-
-Clone a bare dotfiles repository and check out tracked files into $HOME.
-
-Options:
-  -h, --help    Show this help message
-  -n, --dry-run Clone to a temp directory, show conflicts/diffs, then exit
-                without modifying $HOME
-  -v, --verbose Show diffs of changes that would be made              
-  -f, --force   Overwrite --dry-run mode if you are sure and checkout files              
-  -d, --dir     Dotfiles repo folder, default: $HOME/.dotfiles
-  -r, --repo    Repo to clone from
-EOF
-    exit 0
-}
 
 cleanup() {
     if [[ -n "$TMPDIR" && -d "$TMPDIR" ]]; then
@@ -34,54 +99,47 @@ cleanup() {
     exit 0
 }
 
-die() {
-    echo "error: $1" >&2
-    exit 1
-}
-
-((!$#)) && usage
+noargs $#
 
 # --- 1. Parse flags ---
 while (($#)); do
     case "$1" in
-    -n | --dry-run) DRY_RUN=true ;;
-    -v | --verbose) VERBOSE=true ;;
-    -f | --force) DRY_RUN=false ;;
-    -h | --help) usage ;;
-    -d | --dir)
-        [[ -z ${2:-} ]] && die "-d|--dir requires an argument"
-        DOTFILES_DIR=$2
+    -n) DRY_RUN=true ;;
+    -v) VERBOSE=true ;;
+    -f) DRY_RUN=false ;;
+    -h) usage && exit 0 ;;
+    -d)
+        DOTFILES_DIR=$(argval "$@")
         shift
         ;;
-    -r | --repo)
-        [[ -z ${2:-} ]] && die "-r|--repo requires an argument"
-        REPO_URL=$2
+    -r)
+        REPO_URL=$(argval "$@")
         shift
         ;;
     --)
         shift
         break
         ;;
-    *) die "unknown option: $1" ;;
+    *) warn "Unknown option: $1" ;;
     esac
     shift
 done
 
-[[ -z $REPO_URL ]] && printf "%s\n\n" "--repo URL can not be empty" && usage
+[[ -z $REPO_URL ]] && usage && warn "-r URL can not be empty"
 
 # --- 2. Pre-flight checks ---
-command -v git >/dev/null 2>&1 || die "git is not installed"
+command -v git >/dev/null 2>&1 || warn "git is not installed"
 
 if ! $DRY_RUN && [[ -e "$DOTFILES_DIR" ]]; then
-    die "$DOTFILES_DIR already exists; remove it first or use a different path"
+    warn "$DOTFILES_DIR already exists; remove it first or use a different path"
 fi
 
 # --- 3. Clone to a temp directory ---
 TMPDIR=$(mktemp -d)
 trap cleanup EXIT
 
-echo "Cloning from $REPO_URL"
-git clone --bare "$REPO_URL" "$TMPDIR/repo" || die "git clone failed"
+info "Cloning from $REPO_URL"
+git clone --bare "$REPO_URL" "$TMPDIR/repo" || warn "git clone failed"
 
 # Helper: run git against the temp bare repo with $HOME as work tree
 _git() {
@@ -91,10 +149,7 @@ _git() {
 # --- 4. Compare tracked files against $HOME ---
 FILES=$(_git ls-tree -r --name-only HEAD 2>/dev/null)
 
-if [[ -z "$FILES" ]]; then
-    echo "No files found in repo"
-    exit 1
-fi
+[[ -z "$FILES" ]] && warn "No files found in repo"
 
 CONFLICTS=()
 EXISTING=()
@@ -109,24 +164,19 @@ while IFS= read -r file; do
     echo "$file"
 done <<<"$FILES"
 
-read -p "Are the above dotfiles what you expect? [y/N] " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Aborted."
-    exit 1
-fi
+Q "Are the above dotfiles what you expect?"
 
 # --- 5. Show diffs and prompt ---
 if ((${#CONFLICTS[@]})); then
     echo ""
-    echo "Conflicting files (${#CONFLICTS[@]}):"
+    info "Conflicting files (${#CONFLICTS[@]}):"
     for file in "${CONFLICTS[@]}"; do
         printf '  %s\n' "$file"
     done
 
     echo ""
     if $VERBOSE; then
-        echo "Diffs (existing <- repo):"
+        info "Diffs (existing <- repo):"
         for file in "${CONFLICTS[@]}"; do
             echo "--- $file ---"
             diff "$HOME/$file" <(_git show "HEAD:$file") || true
@@ -135,19 +185,14 @@ if ((${#CONFLICTS[@]})); then
     fi
 
     if $DRY_RUN; then
-        echo "Dry run complete. No changes were made."
+        info "Dry run complete. No changes were made."
         exit 0
     fi
 
-    read -p "Backup these files and proceed? [y/N] " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Aborted."
-        exit 1
-    fi
+    Q "Backup these files and proceed?"
 else
     if $DRY_RUN; then
-        echo "No conflicts. Dry run complete."
+        info "No conflicts. Dry run complete."
         exit 0
     fi
 fi
@@ -160,7 +205,7 @@ if ((${#EXISTING[@]})); then
         mkdir -p "$BACKUP_DIR/$(dirname "$file")"
         mv "$HOME/$file" "$BACKUP_DIR/$file"
     done
-    echo "Backed up ${#EXISTING[@]} file(s) to $BACKUP_DIR"
+    info "Backed up ${#EXISTING[@]} file(s) to $BACKUP_DIR"
     echo ""
 fi
 
@@ -174,27 +219,22 @@ dotfiles() {
 
 dotfiles config --local status.showUntrackedFiles no
 
-echo "The following files will be checked out to $HOME:"
+info "The following files will be checked out to $HOME:"
 while IFS= read -r file; do
     [[ -z "$file" ]] && continue
     printf '  %s\n' "$file"
 done <<<"$(dotfiles ls-tree -r --name-only HEAD)"
 echo ""
 
-read -p "Proceed with checkout? [y/N] " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Aborted."
-    exit 1
-fi
+Q "Proceed with checkout?"
 
-echo "Checking out dotfiles..."
+info "Checking out dotfiles..."
 if dotfiles checkout; then
-    echo "Dotfiles installed successfully."
+    info "Dotfiles installed successfully."
 else
-    echo "Checkout failed." >&2
+    msg "Checkout failed." 31
     if [[ -n "${BACKUP_DIR:-}" ]]; then
-        echo "Your original files are in $BACKUP_DIR" >&2
+        msg "Your original files are in $BACKUP_DIR" 31
     fi
     exit 1
 fi
