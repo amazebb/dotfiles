@@ -4,23 +4,11 @@
 
 set -euo pipefail
 
-U() {
-    tput smul
-    printf '%s' "$*"
-    tput rmul
-}
+U() { printf '\e[4m%s\e[0m' "$*"; }
 
-B() {
-    tput bold
-    printf '%s' "$*"
-    tput sgr0
-}
+B() { printf '\e[1m%s\e[0m' "$*"; }
 
-I() {
-    tput sitm
-    printf '%s' "$*"
-    tput ritm
-}
+I() { printf '\e[3m%s\e[0m' "$*"; }
 
 Q() {
     read -r -p "$1 [y/n]: "
@@ -32,11 +20,26 @@ ask() {
     echo "$REPLY"
 }
 
-msg() { printf "\033[%sm%s\033[0m\n" "$2" "$1" >&2; }
+color() {
+    local name=$1; shift
+    local code
+    case $name in
+        RED)     code=31 ;;
+        GREEN)   code=32 ;;
+        YELLOW)  code=33 ;;
+        BLUE)    code=34 ;;
+        MAGENTA) code=35 ;;
+        CYAN)    code=36 ;;
+        *)       code=0  ;;
+    esac
+    printf '\e[%sm%s\e[0m' "$code" "$*"
+}
 
-info() { msg "$1" 34; }
+msg() { printf '%s\n' "$(color "$2" "$1")" >&2; }
 
-warn() { msg "$1" 31 && exit 1; }
+info() { msg "$1" BLUE; }
+
+warn() { msg "$1" RED && exit 1; }
 
 argval() {
     (($# < 2)) || [[ $2 = -* ]] && warn "Error: $1 requires a valid argument" || echo "$2"
@@ -232,9 +235,9 @@ info "Checking out dotfiles..."
 if dotfiles checkout; then
     info "Dotfiles installed successfully."
 else
-    msg "Checkout failed." 31
+    msg "Checkout failed." RED
     if [[ -n "${BACKUP_DIR:-}" ]]; then
-        msg "Your original files are in $BACKUP_DIR" 31
+        msg "Your original files are in $BACKUP_DIR" RED
     fi
     exit 1
 fi
