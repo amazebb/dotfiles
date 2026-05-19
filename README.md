@@ -1,9 +1,24 @@
 # Dotfiles
 Zsh dotfiles management 
 
+## Table of Contents
+
+- [Install](#install)
+  - [Clone repo](#clone-repo)
+  - [Bootstrap your dotfiles](#bootstrap-your-dotfiles)
+  - [Setup autload of dotfiles function](#setup-autload-of-dotfiles-function)
+- [Overview](#overview)
+- [Architecture](#architecture)
+  - [Bare Repository Pattern](#bare-repository-pattern)
+  - [Configuration Files](#configuration-files)
+  - [Global State Variables](#global-state-variables)
+  - [Context-Aware Behavior](#context-aware-behavior)
+  - [Custom Subcommands](#custom-subcommands)
+- [Why ?](#why-)
+
 ## Install
 
-### 1. Clone repo
+### Clone repo
 
 Create `INSTALL_DIR` folder 
 
@@ -18,7 +33,7 @@ Clone `amazebb/dotfiles.git`
 git clone https://github.com/amazebb/dotfiles.git "$INSTALL_DIR"
 ```
 
-### 2. Bootstrap your dotfiles
+### Bootstrap your dotfiles
 
 Set `REPO_DOTFILE` to your personal dotfiles repo if you have one, otherwise
 go to Step 3.
@@ -41,7 +56,7 @@ If everything looks good, run with `-f` to apply.
 
 You're dotfiles repository should now be setup on your local machine.
 
-### 3. Setup autload of dotfiles function
+### Setup autload of dotfiles function
 
 If the dotfiles function is not already autloaded, then we need to add it to
 `~/.zshenv`
