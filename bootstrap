@@ -56,7 +56,7 @@ $(B NAME)
     $(B bootstrap) - Safe bare repo dotfiles installer
 
 $(B SYNOPSIS)
-    $(B "bootstrap [-h] [-n] [-v] [-f] [-d dir] -r repo")
+    $(B "bootstrap [-h] [-n] [-v] [-f] [-d dir]") $(U repo)
 
 $(B DESCRIPTION)
     Clone a bare dotfiles repository and check out tracked files into \$HOME.
@@ -66,7 +66,7 @@ $(B DESCRIPTION)
 $(B OPTIONS)
     $(B -h)         Show this help message
 
-    $(B -n)         Clone to a temp directory, show conflicts/diffs,
+    $(B -n)         Dry-run: clone to a temp directory, show conflicts/diffs,
                then exit without modifying \$HOME $(I '(default)')
 
     $(B -v)         Show diffs of changes that would be made
@@ -75,16 +75,17 @@ $(B OPTIONS)
 
     $(B -d) $(U dir)     Dotfiles repo folder $(I '(default: $HOME/.dotfiles)')
 
-    $(B -r) $(U url)     Repo to clone from $(I required)
+$(B ARGUMENTS)
+    $(U repo)        Repo URL to clone from $(I required)
 
 $(B EXAMPLES)
     Dry-run preview from a remote repo
 
-        bootstrap -r git@github.com:user/dotfiles.git
+        bootstrap git@github.com:user/dotfiles.git
 
     Apply changes after reviewing the dry-run
 
-        bootstrap -f -r git@github.com:user/dotfiles.git
+        bootstrap -f git@github.com:user/dotfiles.git
 
 EOF
 }
@@ -115,20 +116,17 @@ while (($#)); do
         DOTFILES_DIR=$(argval "$@")
         shift
         ;;
-    -r)
-        REPO_URL=$(argval "$@")
-        shift
-        ;;
     --)
         shift
         break
         ;;
-    *) warn "Unknown option: $1" ;;
+    -*)  warn "Unknown option: $1" ;;
+    *)   REPO_URL=$1 ;;
     esac
     shift
 done
 
-[[ -z $REPO_URL ]] && usage && warn "-r URL can not be empty"
+[[ -z $REPO_URL ]] && usage && warn "repo argument is required"
 
 # --- 2. Pre-flight checks ---
 command -v git >/dev/null 2>&1 || warn "git is not installed"
