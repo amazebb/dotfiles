@@ -12,10 +12,10 @@ INSTALL_DIR="$HOME/.local/share/zsh/site-functions/dotfiles"
 mkdir -p "$(dirname "$INSTALL_DIR")"
 ```
 
-Clone `broeknbytes/dotfiles.git`
+Clone `amazebb/dotfiles.git`
 
 ```
-git clone https://github.com/broeknbytes/dotfiles.git "$INSTALL_DIR"
+git clone https://github.com/amazebb/dotfiles.git "$INSTALL_DIR"
 ```
 
 ### 2. Bootstrap your dotfiles
@@ -24,7 +24,7 @@ Set `REPO_DOTFILE` to your personal dotfiles repo if you have one, otherwise
 go to Step 3.
 
 ```sh
-REPO_DOTFILE="https://github.com/broeknbytes/dotfiles-repo.git"
+REPO_DOTFILE="https://github.com/amazebb/dotfiles-repo.git"
 ```
 
 Run `bootstrap` to preview what will change (dry-run is the default).
@@ -111,7 +111,7 @@ determines this based on `$PWD` and comparing with `_$ZDF`
 - `dotfiles [--zsh-prompt] [--print-status]`
 
 `--zsh-prompt` - updates state used by Zsh `precmd` hook in
-[zsh-prompt](https://github.com/broeknbytes/zsh-prompt), to
+[zsh-prompt](https://github.com/amazebb/zsh-prompt), to
   display current branch name with staged/unstaged/untracked counts. 
 
 `--print-status` - prints to stdout the following three lines:
