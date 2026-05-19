@@ -42,16 +42,16 @@ go to Step 3.
 REPO_DOTFILE="https://github.com/amazebb/dotfiles-repo.git"
 ```
 
-Run `bootstrap` to preview what will change (dry-run is the default).
+Run `bootstrap` to preview what will change (dry-run, `-n` is the default).
 
 ```sh
-"$INSTALL_DIR/bootstrap" -r "$REPO_DOTFILE"
+"$INSTALL_DIR/bootstrap" "$REPO_DOTFILE"
 ```
 
 If everything looks good, run with `-f` to apply.
 
 ```sh
-"$INSTALL_DIR/bootstrap" -f -r "$REPO_DOTFILE"
+"$INSTALL_DIR/bootstrap" -f "$REPO_DOTFILE"
 ```
 
 You're dotfiles repository should now be setup on your local machine.
