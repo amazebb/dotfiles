@@ -178,13 +178,28 @@ Q "Are the above dotfiles what you expect?"
 # --- 5. Show diffs and prompt ---
 if $VERBOSE; then
     if ((${#CONFLICTS[@]})); then
-        echo ""
-        info "Diffs (existing <- repo):"
-        for file in "${CONFLICTS[@]}"; do
-            echo "--- $file ---"
-            diff "$HOME/$file" <(_git show "HEAD:$file") || true
+        if command -v opendiff >/dev/null 2>&1; then
+            HOME_VIEW="$TMPDIR/home-view"
+            REPO_VIEW="$TMPDIR/repo-view"
+            for file in "${CONFLICTS[@]}"; do
+                mkdir -p "$HOME_VIEW/$(dirname "$file")"
+                mkdir -p "$REPO_VIEW/$(dirname "$file")"
+                cp "$HOME/$file" "$HOME_VIEW/$file"
+                _git show "HEAD:$file" > "$REPO_VIEW/$file"
+            done
+            info "Opening FileMerge (current <- repo)... close it when done reviewing."
+            opendiff "$HOME_VIEW" "$REPO_VIEW" &>/dev/null &
+            sleep 1
+            while pgrep -xq "FileMerge" 2>/dev/null; do sleep 1; done
+        else
             echo ""
-        done
+            info "Diffs (existing <- repo):"
+            for file in "${CONFLICTS[@]}"; do
+                echo "--- $file ---"
+                diff "$HOME/$file" <(_git show "HEAD:$file") || true
+                echo ""
+            done
+        fi
     else
         info "No diffs, all existing files are identical."
     fi
