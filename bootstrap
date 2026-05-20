@@ -178,7 +178,7 @@ Q "Are the above dotfiles what you expect?"
 # --- 5. Show diffs and prompt ---
 if $VERBOSE; then
     if ((${#CONFLICTS[@]})); then
-        if command -v opendiff >/dev/null 2>&1; then
+        if command -v opendiff >/dev/null 2>&1 && xcode-select -p 2>/dev/null | grep -q "Xcode.app"; then
             HOME_VIEW="$TMPDIR/home-view"
             REPO_VIEW="$TMPDIR/repo-view"
             for file in "${CONFLICTS[@]}"; do
