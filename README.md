@@ -20,8 +20,9 @@ Zsh dotfiles management
 
 ### Clone repo
 
+Create `INSTALL_DIR` folder and clone repo
+
 ```sh
-# Create `INSTALL_DIR` folder and clone repo
 INSTALL_DIR="$HOME/.local/share/zsh/site-functions/dotfiles"
 mkdir -p "$(dirname "$INSTALL_DIR")"
 git clone https://github.com/amazebb/dotfiles.git "$INSTALL_DIR"
