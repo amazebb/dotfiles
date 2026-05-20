@@ -169,7 +169,6 @@ while IFS= read -r file; do
         fi
     else
         NEW+=("$file")
-        $VERBOSE && info "New file: $file"
     fi
     echo "$file"
 done <<<"$FILES"
@@ -189,7 +188,14 @@ if $VERBOSE; then
     else
         info "No diffs, all existing files are identical."
     fi
-    ((${#NEW[@]})) && info "${#NEW[@]} new file(s) will be added."
+fi
+
+if ((${#NEW[@]})); then
+    echo ""
+    info "New files (${#NEW[@]}):"
+    for file in "${NEW[@]}"; do
+        printf '  %s\n' "$file"
+    done
 fi
 
 if ((${#CONFLICTS[@]})); then
