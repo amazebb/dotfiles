@@ -20,23 +20,20 @@ Zsh dotfiles management
 
 ### Clone repo
 
-Create `INSTALL_DIR` folder 
-
 ```sh
+# Create `INSTALL_DIR` folder and clone repo
 INSTALL_DIR="$HOME/.local/share/zsh/site-functions/dotfiles"
 mkdir -p "$(dirname "$INSTALL_DIR")"
-```
-
-Clone `amazebb/dotfiles.git`
-
-```
 git clone https://github.com/amazebb/dotfiles.git "$INSTALL_DIR"
 ```
 
 ### Bootstrap your dotfiles
 
+This is where we install our personal dotfiles using `bootstrap`.
+We live dangerously by using a bare git repo under our `$HOME` folder: `$HOME/.dotfiles`
+
 Set `REPO_DOTFILE` to your personal dotfiles repo if you have one, otherwise
-go to Step 3.
+go to [Setup autload of dotfiles function](#setup-autload-of-dotfiles-function)
 
 ```sh
 REPO_DOTFILE="https://github.com/amazebb/dotfiles-repo.git"
@@ -100,12 +97,11 @@ directory, and is one of the main reasons for the dotfiles/bare repo approach.
 - `~/.gitignore`: Tracked files and folders are defined here, these let us know
   if we are in a dotfiles repo.
 
-> [!IMPORTANT] 
 > Tracked folders are a bit of a :chicken: and :egg: problem. Since git does
 > not have a direct way of telling you what folders are being tracked after you
-> have setup your `.gitignore` file, we use `ls-files` to determine the tracked
+> have setup your `.gitignore` file, `dotfiles` uses `ls-files` to determine the tracked
 > folders. This means **you need to have something in the folder** for it to
-> be tracked.
+> be shown as tracked.
 
 ### Global State Variables
 
