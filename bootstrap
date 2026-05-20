@@ -12,7 +12,10 @@ I() { printf '\e[3m%s\e[0m' "$*"; }
 
 Q() {
     read -r -p "$1 [y/n]: "
-    [[ ! $REPLY =~ [Yy] ]] && echo "Aborted." && exit 1
+    if [[ ! $REPLY =~ [Yy] ]]; then
+        echo "Aborted."
+        exit 1
+    fi
 }
 
 ask() {
@@ -39,7 +42,7 @@ msg() { printf '%s\n' "$(color "$2" "$1")" >&2; }
 
 info() { msg "$1" BLUE; }
 
-warn() { msg "$1" RED && exit 1; }
+warn() { msg "$1" RED; exit 1; }
 
 argval() {
     (($# < 2)) || [[ $2 = -* ]] && warn "Error: $1 requires a valid argument" || echo "$2"
@@ -48,7 +51,7 @@ argval() {
     # through all entered args.
 }
 
-noargs() { ((!$1)) && info "Error: no arguments provided" && usage && exit 1; }
+noargs() { if ((!$1)); then info "Error: no arguments provided"; usage; exit 1; fi; }
 
 usage() {
     cat <<EOF
@@ -97,10 +100,11 @@ TMPDIR=""
 VERBOSE=false
 
 cleanup() {
+    local exit_code=$?
     if [[ -n "$TMPDIR" && -d "$TMPDIR" ]]; then
         rm -rf "$TMPDIR"
     fi
-    exit 0
+    exit "$exit_code"
 }
 
 noargs $#
@@ -139,6 +143,7 @@ fi
 TMPDIR=$(mktemp -d)
 trap cleanup EXIT
 
+$DRY_RUN && info "Dry-run, no changes will be made:"
 info "Cloning from $REPO_URL"
 git clone --bare "$REPO_URL" "$TMPDIR/repo" || warn "git clone failed"
 
@@ -154,6 +159,7 @@ FILES=$(_git ls-tree -r --name-only HEAD 2>/dev/null)
 
 CONFLICTS=()
 EXISTING=()
+NEW=()
 while IFS= read -r file; do
     [[ -z "$file" ]] && continue
     if [[ -e "$HOME/$file" || -L "$HOME/$file" ]]; then
@@ -161,6 +167,9 @@ while IFS= read -r file; do
         if ! diff -q "$HOME/$file" <(_git show "HEAD:$file") >/dev/null 2>&1; then
             CONFLICTS+=("$file")
         fi
+    else
+        NEW+=("$file")
+        $VERBOSE && info "New file: $file"
     fi
     echo "$file"
 done <<<"$FILES"
@@ -168,32 +177,38 @@ done <<<"$FILES"
 Q "Are the above dotfiles what you expect?"
 
 # --- 5. Show diffs and prompt ---
-if ((${#CONFLICTS[@]})); then
-    echo ""
-    info "Conflicting files (${#CONFLICTS[@]}):"
-    for file in "${CONFLICTS[@]}"; do
-        printf '  %s\n' "$file"
-    done
-
-    echo ""
-    if $VERBOSE; then
+if $VERBOSE; then
+    if ((${#CONFLICTS[@]})); then
+        echo ""
         info "Diffs (existing <- repo):"
         for file in "${CONFLICTS[@]}"; do
             echo "--- $file ---"
             diff "$HOME/$file" <(_git show "HEAD:$file") || true
             echo ""
         done
+    else
+        info "No diffs, all existing files are identical."
     fi
+    ((${#NEW[@]})) && info "${#NEW[@]} new file(s) will be added."
+fi
+
+if ((${#CONFLICTS[@]})); then
+    echo ""
+    info "Conflicting files (${#CONFLICTS[@]}):"
+    for file in "${CONFLICTS[@]}"; do
+        printf '  %s\n' "$file"
+    done
+    echo ""
 
     if $DRY_RUN; then
-        info "Dry run complete. No changes were made."
+        info "Dry-run finished"
         exit 0
     fi
 
     Q "Backup these files and proceed?"
 else
     if $DRY_RUN; then
-        info "No conflicts. Dry run complete."
+        info "Dry-run finished"
         exit 0
     fi
 fi
