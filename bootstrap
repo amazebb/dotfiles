@@ -191,6 +191,12 @@ if $VERBOSE; then
             opendiff "$HOME_VIEW" "$REPO_VIEW" &>/dev/null &
             sleep 1
             while pgrep -xq "FileMerge" 2>/dev/null; do sleep 1; done
+        elif command -v vimdiff >/dev/null 2>&1; then
+            for file in "${CONFLICTS[@]}"; do
+                REPO_TMP="$TMPDIR/vimdiff-$(echo "$file" | tr '/' '-')"
+                _git show "HEAD:$file" > "$REPO_TMP"
+                vimdiff "$HOME/$file" "$REPO_TMP"
+            done
         else
             echo ""
             info "Diffs (existing <- repo):"
