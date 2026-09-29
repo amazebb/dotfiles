@@ -37,7 +37,7 @@ _zz_dot_is_tracked() {
 }
 
 _zz_dot_status_line() {
-    local lines=("${(@f)$("${_ZEX[@]}" -c core.fsmonitor=false rev-parse --absolute-git-dir --abbrev-ref HEAD 2>/dev/null)}")
+    local lines=("${(@f)$("${_ZEX[@]}" rev-parse --absolute-git-dir --abbrev-ref HEAD 2>/dev/null)}")
     _ZD[gitdir]=${lines[1]}
     _ZD[prompt]=${lines[2]}
 
@@ -45,7 +45,7 @@ _zz_dot_status_line() {
 
     # Check git status for changes
     local porcelain
-    porcelain=$("${_ZEX[@]}" -c core.fsmonitor=false status --porcelain 2>/dev/null)
+    porcelain=$("${_ZEX[@]}" status --porcelain 2>/dev/null)
 
     if [[ -n $porcelain ]]; then
         local -i s=0

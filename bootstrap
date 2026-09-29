@@ -158,7 +158,7 @@ trap cleanup EXIT
 
 $DRY_RUN && info "Dry-run, no changes will be made:"
 info "Cloning from $REPO_URL"
-git -c protocol.ext.allow=never clone --bare -- "$REPO_URL" "$TMPDIR/repo" || warn "git clone failed"
+git clone --bare "$REPO_URL" "$TMPDIR/repo" || warn "git clone failed"
 
 # Helper: run git against the temp bare repo with $HOME as work tree
 _git() {
@@ -224,11 +224,13 @@ if $VERBOSE; then
         info "No diffs, all existing files are identical."
     fi
 
-    for file in "${NEW[@]}"; do
-        echo "--- new: $(printf '%q' "$file") ---"
-        _git show "HEAD:$file" | cat -v
-        echo ""
-    done
+    if ((${#NEW[@]})); then
+        for file in "${NEW[@]}"; do
+            echo "--- new: $(printf '%q' "$file") ---"
+            _git show "HEAD:$file" | cat -v
+            echo ""
+        done
+    fi
 fi
 
 Q "Are the above dotfiles what you expect?"
