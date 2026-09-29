@@ -12,7 +12,7 @@ I() { printf '\e[3m%s\e[0m' "$*"; }
 
 Q() {
     read -r -p "$1 [y/n]: "
-    if [[ ! $REPLY =~ [Yy] ]]; then
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo "Aborted."
         exit 1
     fi
@@ -51,6 +51,19 @@ argval() {
     # through all entered args.
 }
 
+# True if any parent directory of $HOME/$1 is a symlink (mv would follow it)
+symlinked_parent() {
+    local path=$HOME dir
+    local -a parts
+    IFS=/ read -ra parts <<<"$(dirname "$1")"
+    for dir in "${parts[@]}"; do
+        [[ $dir == . ]] && continue
+        path+="/$dir"
+        [[ -L $path ]] && return 0
+    done
+    return 1
+}
+
 noargs() { if ((!$1)); then info "Error: no arguments provided"; usage; exit 1; fi; }
 
 usage() {
@@ -72,7 +85,7 @@ $(B OPTIONS)
     $(B -n)         Dry-run: clone to a temp directory, show conflicts/diffs,
                then exit without modifying \$HOME $(I '(default)')
 
-    $(B -v)         Show diffs of changes that would be made
+    $(B -v)         Show diffs of changes and contents of new files
 
     $(B -f)         Override dry-run mode and check out files
 
@@ -145,7 +158,7 @@ trap cleanup EXIT
 
 $DRY_RUN && info "Dry-run, no changes will be made:"
 info "Cloning from $REPO_URL"
-git clone --bare "$REPO_URL" "$TMPDIR/repo" || warn "git clone failed"
+git -c protocol.ext.allow=never clone --bare -- "$REPO_URL" "$TMPDIR/repo" || warn "git clone failed"
 
 # Helper: run git against the temp bare repo with $HOME as work tree
 _git() {
@@ -153,15 +166,13 @@ _git() {
 }
 
 # --- 4. Compare tracked files against $HOME ---
-FILES=$(_git ls-tree -r --name-only HEAD 2>/dev/null)
-
-[[ -z "$FILES" ]] && warn "No files found in repo"
-
 CONFLICTS=()
 EXISTING=()
 NEW=()
-while IFS= read -r file; do
+# NUL-delimited so names with newlines/odd characters can't corrupt the lists
+while IFS= read -r -d '' file; do
     [[ -z "$file" ]] && continue
+    symlinked_parent "$file" && warn "Refusing: parent of \$HOME/$file is a symlink"
     if [[ -e "$HOME/$file" || -L "$HOME/$file" ]]; then
         EXISTING+=("$file")
         if ! diff -q "$HOME/$file" <(_git show "HEAD:$file") >/dev/null 2>&1; then
@@ -170,12 +181,15 @@ while IFS= read -r file; do
     else
         NEW+=("$file")
     fi
-    echo "$file"
-done <<<"$FILES"
+    printf '%q\n' "$file"
+done < <(_git ls-tree -r -z --name-only HEAD 2>/dev/null)
 
-Q "Are the above dotfiles what you expect?"
+((${#EXISTING[@]} + ${#NEW[@]})) || warn "No files found in repo"
 
-# --- 5. Show diffs and prompt ---
+info "These files will run as your user (shell rc, etc.). Only proceed with repos you trust."
+$VERBOSE || info "Use -v to review diffs and new file contents first."
+
+# --- 5. Show diffs and new file contents, then confirm ---
 if $VERBOSE; then
     if ((${#CONFLICTS[@]})); then
         if command -v opendiff >/dev/null 2>&1 && xcode-select -p 2>/dev/null | grep -q "Xcode.app"; then
@@ -209,7 +223,15 @@ if $VERBOSE; then
     else
         info "No diffs, all existing files are identical."
     fi
+
+    for file in "${NEW[@]}"; do
+        echo "--- new: $(printf '%q' "$file") ---"
+        _git show "HEAD:$file" | cat -v
+        echo ""
+    done
 fi
+
+Q "Are the above dotfiles what you expect?"
 
 if ((${#NEW[@]})); then
     echo ""
@@ -244,6 +266,7 @@ fi
 if ((${#EXISTING[@]})); then
     BACKUP_DIR="$HOME/.dotfiles-backup-$(date +%Y%m%d-%H%M%S)"
     mkdir -p "$BACKUP_DIR"
+    chmod 700 "$BACKUP_DIR"
     for file in "${EXISTING[@]}"; do
         mkdir -p "$BACKUP_DIR/$(dirname "$file")"
         mv "$HOME/$file" "$BACKUP_DIR/$file"
@@ -263,10 +286,9 @@ dotfiles() {
 dotfiles config --local status.showUntrackedFiles no
 
 info "The following files will be checked out to $HOME:"
-while IFS= read -r file; do
-    [[ -z "$file" ]] && continue
-    printf '  %s\n' "$file"
-done <<<"$(dotfiles ls-tree -r --name-only HEAD)"
+while IFS= read -r -d '' file; do
+    printf '  %q\n' "$file"
+done < <(dotfiles ls-tree -r -z --name-only HEAD)
 echo ""
 
 Q "Proceed with checkout?"
