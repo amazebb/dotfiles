@@ -51,16 +51,36 @@ argval() {
     # through all entered args.
 }
 
-# True if any parent directory of $HOME/$1 is a symlink (mv would follow it)
-symlinked_parent() {
+# Print why $HOME/$1 cannot be written safely and return 0, or return 1 if it can:
+# a parent that is a symlink (mv would follow it) or exists but is not a directory
+parent_problem() {
     local path=$HOME dir
     local -a parts
     IFS=/ read -ra parts <<<"$(dirname "$1")"
     for dir in "${parts[@]}"; do
         [[ $dir == . ]] && continue
         path+="/$dir"
-        [[ -L $path ]] && return 0
+        if [[ -L $path ]]; then
+            echo "a symlink"
+            return 0
+        fi
+        if [[ -e $path && ! -d $path ]]; then
+            echo "not a directory"
+            return 0
+        fi
     done
+    return 1
+}
+
+# True if a repo path could escape $HOME or touch git metadata:
+# absolute, or has a ., .. or .git component (any case)
+unsafe_path() {
+    case $1 in
+    /*) return 0 ;;
+    esac
+    case /$1/ in
+    */./* | */../* | */.[Gg][Ii][Tt]/*) return 0 ;;
+    esac
     return 1
 }
 
@@ -158,7 +178,7 @@ trap cleanup EXIT
 
 $DRY_RUN && info "Dry-run, no changes will be made:"
 info "Cloning from $REPO_URL"
-git clone --bare "$REPO_URL" "$TMPDIR/repo" || warn "git clone failed"
+git clone --bare -c transfer.fsckObjects=true "$REPO_URL" "$TMPDIR/repo" || warn "git clone failed"
 
 # Helper: run git against the temp bare repo with $HOME as work tree
 _git() {
@@ -172,7 +192,12 @@ NEW=()
 # NUL-delimited so names with newlines/odd characters can't corrupt the lists
 while IFS= read -r -d '' file; do
     [[ -z "$file" ]] && continue
-    symlinked_parent "$file" && warn "Refusing: parent of \$HOME/$file is a symlink"
+    if unsafe_path "$file"; then
+        warn "Refusing: unsafe path in repo: $(printf '%q' "$file")"
+    fi
+    if reason=$(parent_problem "$file"); then
+        warn "Refusing: parent of \$HOME/$(printf '%q' "$file") is $reason"
+    fi
     if [[ -e "$HOME/$file" || -L "$HOME/$file" ]]; then
         EXISTING+=("$file")
         if ! diff -q "$HOME/$file" <(_git show "HEAD:$file") >/dev/null 2>&1; then
@@ -215,8 +240,8 @@ if $VERBOSE; then
             echo ""
             info "Diffs (existing <- repo):"
             for file in "${CONFLICTS[@]}"; do
-                echo "--- $file ---"
-                diff "$HOME/$file" <(_git show "HEAD:$file") || true
+                echo "--- $(printf '%q' "$file") ---"
+                diff "$HOME/$file" <(_git show "HEAD:$file") | cat -v || true
                 echo ""
             done
         fi
@@ -239,7 +264,7 @@ if ((${#NEW[@]})); then
     echo ""
     info "New files (${#NEW[@]}):"
     for file in "${NEW[@]}"; do
-        printf '  %s\n' "$file"
+        printf '  %q\n' "$file"
     done
 fi
 
@@ -247,7 +272,7 @@ if ((${#CONFLICTS[@]})); then
     echo ""
     info "Conflicting files (${#CONFLICTS[@]}):"
     for file in "${CONFLICTS[@]}"; do
-        printf '  %s\n' "$file"
+        printf '  %q\n' "$file"
     done
     echo ""
 
@@ -263,6 +288,14 @@ else
         exit 0
     fi
 fi
+
+info "The following files will be checked out to $HOME:"
+while IFS= read -r -d '' file; do
+    printf '  %q\n' "$file"
+done < <(_git ls-tree -r -z --name-only HEAD)
+echo ""
+
+Q "Proceed with checkout?"
 
 # --- 6. Backup all existing files so checkout succeeds ---
 if ((${#EXISTING[@]})); then
@@ -286,14 +319,6 @@ dotfiles() {
 }
 
 dotfiles config --local status.showUntrackedFiles no
-
-info "The following files will be checked out to $HOME:"
-while IFS= read -r -d '' file; do
-    printf '  %q\n' "$file"
-done < <(dotfiles ls-tree -r -z --name-only HEAD)
-echo ""
-
-Q "Proceed with checkout?"
 
 info "Checking out dotfiles..."
 if dotfiles checkout; then
