@@ -2,12 +2,12 @@
 # shellcheck disable=SC2299
 #
 # Manage dotfiles with Git bare repo.
-typeset -gA _ZD  # Associative array, see below definition for explanation
 typeset -ga _ZDF # Tracked folders for dotfiles repo $HOME/.config/dotfiles/config
 typeset -ga _ZEX # Path to git binary if normal repo otherwise dotfiles
 typeset -g  _ZDL # Last path
 
-_ZD=(
+# Associative array
+typeset -gA _ZD=(
     [repo]="$HOME/.dotfiles"  # Dotfiles repo
     [track]=0                 # Current folder tracked(1)/not-tracked(0) status, automatically determined
     [prompt]=""               # Git status summary to use for prompt
@@ -15,49 +15,66 @@ _ZD=(
 )
 
 _zz_dot_init() {
-    [[ $(command -v git) ]] || (echo "dotfiles: 'git' command not found in PATH" >&2; return 1)
-    [[ -d ${_ZD[repo]} ]] || (echo "dotfiles: No ${_ZD[repo]} repo found" >&2; return 1)
+    [[ $(command -v git) ]] || { echo "dotfiles: 'git' command not found in PATH" >&2; return 1; }
+    [[ -d ${_ZD[repo]} ]] || { echo "dotfiles: No ${_ZD[repo]} repo found" >&2; return 1; }
 
-    _ZDF=("${(@f)$(git -C "${_ZD[repo]:h}" \
-        --git-dir="${_ZD[repo]}" --work-tree="${_ZD[repo]:h}" ls-files \
-        --full-name --exclude-standard | xargs dirname | sort -u | sed "s|^|${_ZD[repo]:h}/|")}")
+    local root=${_ZD[repo]:h} dir
+    local -a files dirs
+    files=("${(@0)$(git -C "$root" --git-dir="${_ZD[repo]}" --work-tree="$root" \
+        ls-files -z --full-name --exclude-standard)}")
+    files=(${files:#})
+    dirs=(${(ou)files:h})
 
-    [[ "${_ZDF[1]}" == ${_ZD[repo]:h}/. ]] && _ZDF[1]=${_ZD[repo]:h}
+    _ZDF=()
+    for dir in $dirs; do
+        [[ $dir == . ]] && _ZDF+=$root || _ZDF+="$root/$dir"
+    done
     _ZDL=""
 }
 
 _zz_dot_is_tracked() {
     [[ $_ZDL == "$PWD" ]] && return 0
+    local folder
     _ZD[track]=0
+    _ZD[gitdir]=""
     for folder in "${_ZDF[@]}"; do
         [[ $PWD == "$folder" ]] && _ZD[track]=1 && break
     done
-    ((_ZD[track])) && _ZEX=("git" "--git-dir=${_ZD[repo]}" "--work-tree=${${_ZD[repo]}:h}") || _ZEX=("git")
+    if ((_ZD[track])); then
+        _ZEX=("git" "--git-dir=${_ZD[repo]}" "--work-tree=${_ZD[repo]:h}")
+        _ZD[gitdir]=${_ZD[repo]}
+    else
+        _ZEX=("git")
+    fi
     _ZDL=$PWD
 }
 
 _zz_dot_status_line() {
-    local lines=("${(@f)$("${_ZEX[@]}" rev-parse --absolute-git-dir --abbrev-ref HEAD 2>/dev/null)}")
-    _ZD[gitdir]=${lines[1]}
-    _ZD[prompt]=${lines[2]}
+    # One git process: branch from the header, counts from the v2 entries.
+    # fsmonitor off so a repo we did not create cannot run its hook;
+    # no-optional-locks so the prompt never takes index.lock.
+    local -a lines
+    lines=("${(@f)$("${_ZEX[@]}" -c core.fsmonitor=false --no-optional-locks \
+        status --porcelain=v2 --branch 2>/dev/null)}")
 
-    [[ -z ${_ZD[prompt]} ]] && return 1
+    local head=${lines[(r)\# branch.head *]}
+    head=${head#"# branch.head "}
+    [[ $head == "(detached)" ]] && head=HEAD
+    _ZD[prompt]=$head
 
-    # Check git status for changes
-    local porcelain
-    porcelain=$("${_ZEX[@]}" status --porcelain 2>/dev/null)
+    [[ -z $head ]] && return 1
+    [[ -z ${_ZD[gitdir]} ]] && _ZD[gitdir]=$("${_ZEX[@]}" rev-parse --absolute-git-dir 2>/dev/null)
 
-    if [[ -n $porcelain ]]; then
-        local -i s=0
-        s=$(echo "$porcelain" | grep -c "^[MTADRC]")
-        ((s)) && _ZD[prompt]+=" +$s" # staged
-        s=$(echo "$porcelain" | grep -c "^.[MTDRC]")
-        ((s)) && _ZD[prompt]+=" ~$s" # unstaged
-        s=$(echo "$porcelain" | grep -c "^??")
-        ((s)) && _ZD[prompt]+=" ?$s" # untracked
-    fi
+    local -i s
+    s=${#${(M)lines:#[12]\ [MTADRC]*}}
+    ((s)) && _ZD[prompt]+=" +$s" # staged
+    s=${#${(M)lines:#[12]\ ?[MTDRC]*}}
+    ((s)) && _ZD[prompt]+=" ~$s" # unstaged
+    s=${#${(M)lines:#\?\ *}}
+    ((s)) && _ZD[prompt]+=" ?$s" # untracked
 
     [[ $1 == --print-status ]] && printf "%s\n%s\n%s\n" "${_ZD[prompt]}" "${_ZD[track]}" "${_ZD[gitdir]}"
+    return 0
 }
 
 dotfiles() {
@@ -73,3 +90,8 @@ dotfiles() {
             ;;
     esac
 }
+
+# First call under autoload runs this file as the function body: forward it.
+if (($#)); then
+    dotfiles "$@"
+fi

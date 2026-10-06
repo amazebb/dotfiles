@@ -129,13 +129,13 @@ EOF
 DOTFILES_DIR="$HOME/.dotfiles"
 REPO_URL=""
 DRY_RUN=true
-TMPDIR=""
+WORK=""
 VERBOSE=false
 
 cleanup() {
     local exit_code=$?
-    if [[ -n "$TMPDIR" && -d "$TMPDIR" ]]; then
-        rm -rf "$TMPDIR"
+    if [[ -n "$WORK" && -d "$WORK" ]]; then
+        rm -rf "$WORK"
     fi
     exit "$exit_code"
 }
@@ -172,17 +172,21 @@ if ! $DRY_RUN && [[ -e "$DOTFILES_DIR" ]]; then
     warn "$DOTFILES_DIR already exists; remove it first or use a different path"
 fi
 
+if ! $DRY_RUN && [[ ! -d "$(dirname "$DOTFILES_DIR")" ]]; then
+    warn "$(dirname "$DOTFILES_DIR") does not exist; create it first or use a different path"
+fi
+
 # --- 3. Clone to a temp directory ---
-TMPDIR=$(mktemp -d)
+WORK=$(mktemp -d)
 trap cleanup EXIT
 
 $DRY_RUN && info "Dry-run, no changes will be made:"
 info "Cloning from $REPO_URL"
-git clone --bare -c transfer.fsckObjects=true "$REPO_URL" "$TMPDIR/repo" || warn "git clone failed"
+git clone --bare -c transfer.fsckObjects=true "$REPO_URL" "$WORK/repo" || warn "git clone failed"
 
 # Helper: run git against the temp bare repo with $HOME as work tree
 _git() {
-    git --git-dir="$TMPDIR/repo" "$@"
+    git --git-dir="$WORK/repo" "$@"
 }
 
 # --- 4. Compare tracked files against $HOME ---
@@ -218,8 +222,8 @@ $VERBOSE || info "Use -v to review diffs and new file contents first."
 if $VERBOSE; then
     if ((${#CONFLICTS[@]})); then
         if command -v opendiff >/dev/null 2>&1 && xcode-select -p 2>/dev/null | grep -q "Xcode.app"; then
-            HOME_VIEW="$TMPDIR/home-view"
-            REPO_VIEW="$TMPDIR/repo-view"
+            HOME_VIEW="$WORK/home-view"
+            REPO_VIEW="$WORK/repo-view"
             for file in "${CONFLICTS[@]}"; do
                 mkdir -p "$HOME_VIEW/$(dirname "$file")"
                 mkdir -p "$REPO_VIEW/$(dirname "$file")"
@@ -232,7 +236,7 @@ if $VERBOSE; then
             while pgrep -xq "FileMerge" 2>/dev/null; do sleep 1; done
         elif command -v vimdiff >/dev/null 2>&1; then
             for file in "${CONFLICTS[@]}"; do
-                REPO_TMP="$TMPDIR/vimdiff-$(echo "$file" | tr '/' '-')"
+                REPO_TMP="$WORK/vimdiff-$(echo "$file" | tr '/' '-')"
                 _git show "HEAD:$file" > "$REPO_TMP"
                 vimdiff "$HOME/$file" "$REPO_TMP"
             done
@@ -311,8 +315,8 @@ if ((${#EXISTING[@]})); then
 fi
 
 # --- 7. Move bare repo and checkout ---
-mv "$TMPDIR/repo" "$DOTFILES_DIR"
-TMPDIR="" # nothing left to clean up
+mv "$WORK/repo" "$DOTFILES_DIR"
+WORK="" # nothing left to clean up
 
 dotfiles() {
     git --git-dir="$DOTFILES_DIR" --work-tree="$HOME" "$@"
