@@ -11,8 +11,9 @@ B() { printf '\e[1m%s\e[0m' "$*"; }
 I() { printf '\e[3m%s\e[0m' "$*"; }
 
 Q() {
-    read -r -p "$1 [y/n]: "
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    local reply=""
+    read -r -p "$1 [y/n]: " reply || true # EOF (no tty) leaves reply empty: treated as no
+    if [[ ! $reply =~ ^[Yy]$ ]]; then
         echo "Aborted."
         exit 1
     fi
@@ -101,6 +102,12 @@ rollback_backup() {
     return "$failed"
 }
 
+# Exactly one repo operand is allowed
+setrepo() {
+    [[ -z $REPO_URL ]] || warn "Error: only one repo may be given ($REPO_URL, $1)"
+    REPO_URL=$1
+}
+
 noargs() { if ((!$1)); then info "Error: no arguments provided"; usage; exit 1; fi; }
 
 usage() {
@@ -175,13 +182,13 @@ while (($#)); do
     --)
         shift
         while (($#)); do
-            REPO_URL=$1
+            setrepo "$1"
             shift
         done
         break
         ;;
     -*)  warn "Unknown option: $1" ;;
-    *)   REPO_URL=$1 ;;
+    *)   setrepo "$1" ;;
     esac
     shift
 done
@@ -330,9 +337,8 @@ Q "Proceed with checkout?"
 
 # --- 6. Backup all existing files so checkout succeeds ---
 if ((${#EXISTING[@]})); then
-    BACKUP_DIR="$HOME/.dotfiles-backup-$(date +%Y%m%d-%H%M%S)"
-    mkdir -p "$BACKUP_DIR"
-    chmod 700 "$BACKUP_DIR"
+    # mktemp creates it 0700 and unique, so a rerun in the same second cannot reuse or overwrite a backup
+    BACKUP_DIR=$(mktemp -d "$HOME/.dotfiles-backup-$(date +%Y%m%d-%H%M%S).XXXXXX")
     for file in "${EXISTING[@]}"; do
         if mkdir -p "$BACKUP_DIR/$(dirname "$file")" && mv "$HOME/$file" "$BACKUP_DIR/$file"; then
             MOVED+=("$file")

@@ -229,3 +229,43 @@ test_repo_move_failure_after_backup_restores_files() {
     assert_content "$HOME/.zshrc" old
     [[ -z $(find "$HOME" -maxdepth 1 -name '.dotfiles-backup-*') ]] || fail "backup dir left behind"
 }
+
+test_stdin_eof_says_aborted() {
+    mkrepo "$T/r.git" ".zshrc=new"
+    bs '' "$T/r.git"
+    ((RC != 0)) || fail "expected non-zero at EOF"
+    assert_contains "$OUT" "Aborted."
+}
+
+test_second_repo_operand_is_refused() {
+    mkrepo "$T/a.git" ".zshrc=a"
+    mkrepo "$T/b.git" ".zshrc=b"
+    bs 'n\n' "$T/a.git" "$T/b.git"
+    ((RC != 0)) || fail "two repos were accepted"
+    assert_contains "$OUT" "only one repo"
+    assert_not_contains "$OUT" "Cloning"
+}
+
+test_second_repo_operand_after_double_dash_is_refused() {
+    mkrepo "$T/a.git" ".zshrc=a"
+    bs 'n\n' -- "$T/a.git" "$T/a.git"
+    ((RC != 0)) || fail "two repos were accepted"
+    assert_contains "$OUT" "only one repo"
+}
+
+test_backups_in_the_same_second_do_not_overwrite_each_other() {
+    mkdir -p "$T/shim"
+    printf '#!/bin/sh\necho 20200101-000000\n' >"$T/shim/date"
+    chmod +x "$T/shim/date"
+    PATH=$T/shim:$PATH
+    mkrepo "$T/r.git" ".zshrc=new"
+    echo old1 >"$HOME/.zshrc"
+    bs 'y\ny\ny\n' -f -d "$HOME/.d1" "$T/r.git"
+    ((RC == 0)) || fail "first apply failed: $OUT"
+    echo old2 >"$HOME/.zshrc"
+    bs 'y\ny\ny\n' -f -d "$HOME/.d2" "$T/r.git"
+    ((RC == 0)) || fail "second apply failed: $OUT"
+    local all
+    all=$(cat "$HOME"/.dotfiles-backup-*/.zshrc | sort | tr '\n' ' ')
+    assert_eq "$all" "old1 old2 " "a backup was overwritten"
+}
