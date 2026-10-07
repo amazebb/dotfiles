@@ -19,11 +19,6 @@ Q() {
     fi
 }
 
-ask() {
-    read -r -p "$1: "
-    echo "$REPLY"
-}
-
 color() {
     local name=$1; shift
     local code
@@ -47,9 +42,8 @@ warn() { msg "$1" RED; exit 1; }
 
 argval() {
     (($# < 2)) || [[ $2 = -* ]] && warn "Error: $1 requires a valid argument" || echo "$2"
-    # NOTE Because 'warn' is called in a sub-shell, the exit 1 does not
-    # exit immediately. The parse arguments while loop will cycle
-    # through all entered args.
+    # NOTE 'warn' runs in the caller's $(...) subshell and exits only that
+    # subshell; the failed assignment then trips set -e and stops the script.
 }
 
 # Print why $HOME/$1 cannot be written safely and return 0, or return 1 if it can:
@@ -57,7 +51,7 @@ argval() {
 parent_problem() {
     local path=$HOME dir
     local -a parts
-    IFS=/ read -ra parts <<<"$(dirname "$1")"
+    IFS=/ read -ra parts <<<"$(dirname -- "$1")"
     for dir in "${parts[@]}"; do
         [[ $dir == . ]] && continue
         path+="/$dir"
@@ -202,8 +196,8 @@ if ! $DRY_RUN && [[ -e "$DOTFILES_DIR" ]]; then
     warn "$DOTFILES_DIR already exists; remove it first or use a different path"
 fi
 
-if ! $DRY_RUN && [[ ! -d "$(dirname "$DOTFILES_DIR")" ]]; then
-    warn "$(dirname "$DOTFILES_DIR") does not exist; create it first or use a different path"
+if ! $DRY_RUN && [[ ! -d "$(dirname -- "$DOTFILES_DIR")" ]]; then
+    warn "$(dirname -- "$DOTFILES_DIR") does not exist; create it first or use a different path"
 fi
 
 # --- 3. Clone to a temp directory ---
@@ -259,8 +253,8 @@ if $VERBOSE; then
             HOME_VIEW="$WORK/home-view"
             REPO_VIEW="$WORK/repo-view"
             for file in "${CONFLICTS[@]}"; do
-                mkdir -p "$HOME_VIEW/$(dirname "$file")"
-                mkdir -p "$REPO_VIEW/$(dirname "$file")"
+                mkdir -p "$HOME_VIEW/$(dirname -- "$file")"
+                mkdir -p "$REPO_VIEW/$(dirname -- "$file")"
                 cp "$HOME/$file" "$HOME_VIEW/$file"
                 _git show "HEAD:$file" > "$REPO_VIEW/$file"
             done
@@ -340,7 +334,7 @@ if ((${#EXISTING[@]})); then
     # mktemp creates it 0700 and unique, so a rerun in the same second cannot reuse or overwrite a backup
     BACKUP_DIR=$(mktemp -d "$HOME/.dotfiles-backup-$(date +%Y%m%d-%H%M%S).XXXXXX")
     for file in "${EXISTING[@]}"; do
-        if mkdir -p "$BACKUP_DIR/$(dirname "$file")" && mv "$HOME/$file" "$BACKUP_DIR/$file"; then
+        if mkdir -p "$BACKUP_DIR/$(dirname -- "$file")" && mv "$HOME/$file" "$BACKUP_DIR/$file"; then
             MOVED+=("$file")
         else
             msg "Backup of $(printf '%q' "$file") failed; restoring the files already moved." RED

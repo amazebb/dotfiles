@@ -152,7 +152,13 @@ test_tmpdir_is_honoured_and_not_leaked() {
     shim_git "$T/git.log"
     TMPDIR=$T/tmp bs 'y\ny\n' -f "$T/r.git"
     ((RC == 0)) || fail "apply failed: $OUT"
-    assert_contains "$OUT" "Cloning into bare repository '$T/tmp/"
+    # BSD mktemp (stock macOS) ignores $TMPDIR; only check the clone dir where mktemp honours it
+    local probe
+    probe=$(TMPDIR=$T/tmp mktemp -d)
+    rmdir "$probe"
+    if [[ $probe == "$T/tmp/"* ]]; then
+        assert_contains "$OUT" "Cloning into bare repository '$T/tmp/"
+    fi
     local bad
     bad=$(grep -v "^TMPDIR=\[$T/tmp\] " "$T/git.log" || true)
     [[ -z $bad ]] || fail "a child git saw a different TMPDIR:"$'\n'"$bad"
@@ -268,4 +274,14 @@ test_backups_in_the_same_second_do_not_overwrite_each_other() {
     local all
     all=$(cat "$HOME"/.dotfiles-backup-*/.zshrc | sort | tr '\n' ' ')
     assert_eq "$all" "old1 old2 " "a backup was overwritten"
+}
+
+test_existing_file_under_dash_led_directory_is_backed_up() {
+    mkrepo "$T/r.git" "-x/y=new" ".zshrc=new"
+    mkdir "$HOME/-x"
+    echo old >"$HOME/-x/y"
+    bs 'y\ny\ny\n' -f "$T/r.git"
+    ((RC == 0)) || fail "apply failed: $OUT"
+    assert_content "$HOME/-x/y" new
+    assert_content "$(find "$HOME" -maxdepth 1 -name '.dotfiles-backup-*')/-x/y" old
 }

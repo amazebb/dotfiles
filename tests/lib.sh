@@ -30,7 +30,7 @@ mkrepo() {
     src=$(mktemp -d "$T/src.XXXXXX")
     git init -q -b main "$src"
     for spec in "$@"; do
-        mkdir -p "$src/$(dirname "${spec%%=*}")"
+        mkdir -p "$src/$(dirname -- "${spec%%=*}")"
         printf '%s\n' "${spec#*=}" >"$src/${spec%%=*}"
     done
     git -C "$src" add -A
