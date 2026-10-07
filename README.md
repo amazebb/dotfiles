@@ -132,6 +132,17 @@ determines this based on `$PWD` and comparing with `_$ZDF`
   - 1 if dotfiles repo, 0 standard git repo
   - path to .git/.dotfiles folder
 
+## Tests
+
+```sh
+tests/run              # bootstrap on bash 3.2 and bash 5, dotfiles on zsh
+tests/run -k prompt    # only tests whose name contains "prompt"
+```
+
+Needs `git`, `zsh` and `xxd`. Tests run in a scratch `$HOME`. `xfail_*` tests
+are known open bugs and must fail; an `XPASS` means the bug is fixed, so rename
+it to `test_*`.
+
 ## Why ?
 - Learn some Zsh
 - Learn Git plumbing

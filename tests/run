@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# Run the test suites.
+#   tests/run [-k substring]          bootstrap suite runs once per shell in BS_SHELLS
+#   BS_SHELLS="/bin/bash bash" tests/run
+# Tests are functions in tests/*.test.sh: test_* must pass, xfail_* are known open
+# bugs and must fail (an XPASS means the bug is fixed: rename it to test_*).
+set -u
+
+HERE=$(cd "$(dirname "$0")" && pwd -P)
+filter=""
+[[ ${1:-} == -k ]] && filter=${2:-}
+
+pass=0 failed=0 xfail=0 xpass=0
+
+run_one() { # <suite file> <test name> <label>
+    local out status rc
+    out=$(
+        (
+            # shellcheck source=tests/lib.sh
+            # shellcheck disable=SC1091
+            source "$HERE/lib.sh"
+            # shellcheck disable=SC1090
+            source "$1"
+            setup
+            trap teardown EXIT
+            "$2"
+        ) 2>&1
+    )
+    status=$?
+    rc=$status
+    case $2 in
+    xfail_*)
+        if ((rc)); then
+            echo "XFAIL $2 $3"
+            xfail=$((xfail + 1))
+        else
+            echo "XPASS $2 $3 (fixed? rename to test_)"
+            xpass=$((xpass + 1))
+        fi
+        ;;
+    *)
+        if ((rc)); then
+            echo "FAIL  $2 $3"
+            printf '%s\n' "$out" | sed 's/^/        /' | head -30
+            failed=$((failed + 1))
+        else
+            echo "PASS  $2 $3"
+            pass=$((pass + 1))
+        fi
+        ;;
+    esac
+}
+
+run_suite() { # <suite file> <label>
+    local name
+    while read -r name; do
+        [[ -z $filter || $name == *"$filter"* ]] || continue
+        run_one "$1" "$name" "$2"
+    done < <(grep -oE '^(test|xfail)_[A-Za-z0-9_]+' "$1")
+}
+
+seen=""
+for sh in ${BS_SHELLS:-/bin/bash bash}; do
+    command -v "$sh" >/dev/null 2>&1 || continue
+    sh=$(command -v "$sh")
+    # shellcheck disable=SC2016
+    ver=$("$sh" -c 'echo "$BASH_VERSION"')
+    [[ " $seen " == *" $ver "* ]] && continue
+    seen+=" $ver"
+    export BS_SHELL=$sh
+    run_suite "$HERE/bootstrap.test.sh" "[bash $ver]"
+done
+run_suite "$HERE/dotfiles.test.sh" "[zsh]"
+
+echo
+echo "pass=$pass fail=$failed xfail=$xfail xpass=$xpass"
+((failed == 0 && xpass == 0))

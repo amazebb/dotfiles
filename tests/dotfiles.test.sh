@@ -1,0 +1,174 @@
+# shellcheck shell=bash
+# Tests for the `dotfiles` zsh function. Each test writes a zsh script to $T and
+# runs it with `zsh -f` (no user rc files), HOME=$T/home.
+
+# zrun: read a zsh script on stdin, run it, merge stderr into stdout
+zrun() {
+    cat >"$T/t.zsh"
+    zsh -f "$T/t.zsh" 2>&1
+}
+
+# first_status: first status line, skipping the one-off "No ... repo found" notice
+first_status() { grep -v '^dotfiles: No ' <<<"$1" | sed -n 1p; }
+
+# mkdotrepo: bare repo at $HOME/.dotfiles with the files checked out into $HOME
+mkdotrepo() {
+    mkrepo "$HOME/.dotfiles" ".zshrc=export A=1" ".config/my app/f=x"
+    git --git-dir="$HOME/.dotfiles" --work-tree="$HOME" checkout -q -f
+    git --git-dir="$HOME/.dotfiles" config status.showUntrackedFiles no
+}
+
+# mkwork: ordinary repo $T/work with one committed file
+mkwork() {
+    git init -q -b main "$T/work"
+    git -C "$T/work" config user.email t@t
+    git -C "$T/work" config user.name t
+    touch "$T/work/plain"
+    git -C "$T/work" add plain
+    git -C "$T/work" commit -q -m init
+}
+
+test_zsh_parses() {
+    zsh -n "$ROOT/dotfiles" || fail "zsh -n failed"
+}
+
+test_first_autoload_call_is_forwarded() {
+    mkdotrepo
+    out=$(zrun <<'EOF'
+fpath=($ROOT $fpath)
+autoload -Uz dotfiles
+cd $HOME
+dotfiles log --format=%s
+EOF
+    )
+    assert_eq "$out" init
+}
+
+test_sourcing_without_args_runs_nothing() {
+    mkdotrepo
+    out=$(zrun <<'EOF'
+source $ROOT/dotfiles
+print -r -- "rc=$?"
+EOF
+    )
+    assert_eq "$out" "rc=0"
+}
+
+test_tracked_folders_keep_spaces() {
+    mkdotrepo
+    out=$(zrun <<'EOF'
+source $ROOT/dotfiles
+_zz_dot_init
+print -rl -- "${_ZDF[@]}"
+EOF
+    )
+    assert_contains "$out" "$HOME/.config/my app"
+    assert_not_contains "$out" "$HOME/app"
+}
+
+test_prompt_counts_staged_unstaged_untracked() {
+    mkwork
+    cd "$T/work" || exit 1
+    echo 2 >>plain
+    touch staged untracked untracked2
+    git add staged
+    git mv plain plain2
+    echo 3 >>plain2
+    out=$(zrun <<'EOF'
+source $ROOT/dotfiles
+cd $T/work
+dotfiles --print-status
+EOF
+    )
+    assert_eq "$(first_status "$out")" "main +2 ~1 ?2"
+}
+
+test_prompt_shows_head_when_detached() {
+    mkwork
+    git -C "$T/work" checkout -q --detach
+    out=$(zrun <<'EOF'
+source $ROOT/dotfiles
+cd $T/work
+dotfiles --print-status
+EOF
+    )
+    assert_eq "$(first_status "$out")" "HEAD"
+}
+
+test_prompt_filename_with_newline_is_not_miscounted() {
+    mkwork
+    printf x >"$T/work/"$'a\nM b'
+    git -C "$T/work" add -A
+    git -C "$T/work" commit -q -m n
+    echo y >>"$T/work/"$'a\nM b'
+    out=$(zrun <<'EOF'
+source $ROOT/dotfiles
+cd $T/work
+dotfiles --print-status
+EOF
+    )
+    assert_eq "$(first_status "$out")" "main ~1"
+}
+
+test_prompt_in_tracked_folder_uses_dotfiles_repo() {
+    mkdotrepo
+    out=$(zrun <<'EOF'
+source $ROOT/dotfiles
+cd $HOME
+dotfiles --print-status
+EOF
+    )
+    assert_eq "$out" "main"$'\n'"1"$'\n'"$HOME/.dotfiles"
+}
+
+test_prompt_starts_one_git_process() {
+    mkwork
+    shim_git "$T/git.log"
+    PATH=$PATH zrun <<'EOF'
+source $ROOT/dotfiles
+cd $T/work
+dotfiles --zsh-prompt
+: > $T/git.log
+dotfiles --zsh-prompt
+EOF
+    assert_eq "$(wc -l <"$T/git.log" | tr -d ' ')" 1
+}
+
+test_prompt_does_not_run_repo_fsmonitor_hook() {
+    mkwork
+    printf '#!/bin/sh\ntouch %s/pwned\n' "$T" >"$T/hook.sh"
+    chmod +x "$T/hook.sh"
+    git -C "$T/work" config core.fsmonitor "$T/hook.sh"
+    zrun <<'EOF'
+source $ROOT/dotfiles
+cd $T/work
+dotfiles --zsh-prompt
+EOF
+    assert_no_file "$T/pwned"
+}
+
+test_missing_repo_reports_once_and_falls_back_to_git() {
+    mkwork
+    out=$(zrun <<'EOF'
+source $ROOT/dotfiles
+cd $T/work
+dotfiles --print-status
+dotfiles --print-status
+EOF
+    )
+    assert_eq "$(grep -c 'No .* repo found' <<<"$out")" 1
+    assert_eq "$(grep -c '^main$' <<<"$out")" 2
+}
+
+test_prompt_does_not_clobber_caller_variables() {
+    mkdotrepo
+    out=$(zrun <<'EOF'
+source $ROOT/dotfiles
+folder=keepme
+cd $HOME
+dotfiles --zsh-prompt
+print -r -- $folder
+EOF
+    )
+    assert_eq "$out" keepme
+}
