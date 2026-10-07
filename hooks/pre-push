@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# pre-push: lint and run the tests; a non-zero exit blocks the push.
+# Enable once per clone:  git config core.hooksPath hooks
+# Skip for one push:      git push --no-verify
+set -u
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+fail() { echo "pre-push: $*" >&2; exit 1; }
+
+bash -n bootstrap || fail "bash -n bootstrap failed"
+/bin/bash -n bootstrap || fail "/bin/bash -n bootstrap failed"
+zsh -n dotfiles || fail "zsh -n dotfiles failed"
+
+if command -v shellcheck >/dev/null 2>&1; then
+    shellcheck -x bootstrap tests/run tests/lib.sh tests/*.test.sh || fail "shellcheck failed"
+else
+    echo "pre-push: shellcheck not installed, skipped" >&2
+fi
+
+tests/run || fail "tests failed"

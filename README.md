@@ -174,6 +174,13 @@ rely on read-only folders). Tests run in a scratch `$HOME`. `xfail_*` tests are
 known open bugs and must fail; an `XPASS` means the bug is fixed, so rename it
 to `test_*`.
 
+To run the lint and the tests before every push, enable the tracked hook once
+per clone (skip it for one push with `git push --no-verify`):
+
+```sh
+git config core.hooksPath hooks
+```
+
 ## Why ?
 - Learn some Zsh
 - Learn Git plumbing
