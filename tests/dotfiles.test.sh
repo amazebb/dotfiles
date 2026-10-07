@@ -205,3 +205,74 @@ EOF
     )
     assert_eq "$out" "rc=128"$'\n'"rc=0"
 }
+
+test_prompt_counts_unmerged_entries() {
+    mkwork
+    cd "$T/work" || exit 1
+    echo base >f
+    git add f
+    git commit -q -m base
+    git checkout -q -b side
+    echo side >f
+    git commit -q -am side
+    git checkout -q main
+    echo main >f
+    git commit -q -am main
+    git merge side >/dev/null 2>&1
+    out=$(zrun <<'EOF'
+source $ROOT/dotfiles
+cd $T/work
+dotfiles --print-status
+EOF
+    )
+    assert_eq "$(first_status "$out")" "main !1"
+}
+
+test_prompt_shows_ahead_and_behind() {
+    mkrepo "$T/up.git" "f=1"
+    git clone -q "$T/up.git" "$T/w"
+    git clone -q "$T/up.git" "$T/w2"
+    echo 2 >"$T/w/g"
+    git -C "$T/w" add g
+    git -C "$T/w" commit -q -m ahead
+    echo 3 >"$T/w2/h"
+    git -C "$T/w2" add h
+    git -C "$T/w2" commit -q -m other
+    git -C "$T/w2" push -q origin main
+    git -C "$T/w" fetch -q
+    out=$(zrun <<'EOF'
+source $ROOT/dotfiles
+cd $T/w
+dotfiles --print-status
+EOF
+    )
+    assert_eq "$(first_status "$out")" "main ↑1 ↓1"
+}
+
+test_prompt_has_no_ahead_behind_without_upstream() {
+    mkwork
+    out=$(zrun <<'EOF'
+source $ROOT/dotfiles
+cd $T/work
+dotfiles --print-status
+EOF
+    )
+    assert_eq "$(first_status "$out")" "main"
+}
+
+test_works_under_user_zsh_options() {
+    mkdotrepo
+    out=$(zrun <<'EOF'
+for opt in extendedglob ksharrays shwordsplit nounset nullglob noglob globsubst rcexpandparam kshglob; do
+    (
+        setopt $opt
+        source $ROOT/dotfiles
+        cd $HOME
+        print -r -- "$opt: $(dotfiles --print-status 2>&1 | tr '\n' ' ')"
+    )
+done
+EOF
+    )
+    bad=$(grep -v ": main 1 $HOME/.dotfiles $" <<<"$out" || true)
+    [[ -z $bad ]] || fail "breaks under:"$'\n'"$bad"
+}

@@ -2,8 +2,8 @@
 # shellcheck disable=SC2299
 #
 # Manage dotfiles with Git bare repo.
-typeset -ga _ZDF # Tracked folders for dotfiles repo $HOME/.config/dotfiles/config
-typeset -ga _ZEX # Path to git binary if normal repo otherwise dotfiles
+typeset -ga _ZDF # Absolute paths of folders holding tracked files, built from git ls-files by _zz_dot_init
+typeset -ga _ZEX # git command for the current folder: plain git, or git with --git-dir/--work-tree for the dotfiles repo
 typeset -g  _ZDL # Last path
 
 # Associative array
@@ -15,6 +15,7 @@ typeset -gA _ZD=(
 )
 
 _zz_dot_init() {
+    emulate -L zsh
     [[ $(command -v git) ]] || { echo "dotfiles: 'git' command not found in PATH" >&2; return 1; }
     [[ -d ${_ZD[repo]} ]] || { echo "dotfiles: No ${_ZD[repo]} repo found" >&2; return 1; }
 
@@ -33,6 +34,7 @@ _zz_dot_init() {
 }
 
 _zz_dot_is_tracked() {
+    emulate -L zsh
     [[ $_ZDL == "$PWD" ]] && return 0
     local folder
     _ZD[track]=0
@@ -50,6 +52,7 @@ _zz_dot_is_tracked() {
 }
 
 _zz_dot_status_line() {
+    emulate -L zsh
     # One git process: branch from the header, counts from the v2 entries.
     # fsmonitor off so a repo we did not create cannot run its hook;
     # no-optional-locks so the prompt never takes index.lock.
@@ -70,14 +73,26 @@ _zz_dot_status_line() {
     ((s)) && _ZD[prompt]+=" +$s" # staged
     s=${#${(M)lines:#[12]\ ?[MTDRC]*}}
     ((s)) && _ZD[prompt]+=" ~$s" # unstaged
+    s=${#${(M)lines:#u\ *}}
+    ((s)) && _ZD[prompt]+=" !$s" # unmerged (conflicts)
     s=${#${(M)lines:#\?\ *}}
     ((s)) && _ZD[prompt]+=" ?$s" # untracked
+
+    # ahead/behind upstream: "# branch.ab +A -B", present only when an upstream is set
+    local ab=${lines[(r)\# branch.ab *]}
+    if [[ -n $ab ]]; then
+        ab=${ab#"# branch.ab "}
+        local -i ahead=${${ab%% *}#+} behind=${${ab##* }#-}
+        ((ahead)) && _ZD[prompt]+=" ↑$ahead"
+        ((behind)) && _ZD[prompt]+=" ↓$behind"
+    fi
 
     [[ $1 == --print-status ]] && printf "%s\n%s\n%s\n" "${_ZD[prompt]}" "${_ZD[track]}" "${_ZD[gitdir]}"
     return 0
 }
 
 dotfiles() {
+    emulate -L zsh
     [[ -z $_ZDL ]] && _zz_dot_init
     _zz_dot_is_tracked
 
