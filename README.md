@@ -15,6 +15,7 @@ Zsh dotfiles management
   - [Context-Aware Behavior](#context-aware-behavior)
   - [Custom Subcommands](#custom-subcommands)
 - [Tests](#tests)
+- [CI](#ci)
 - [Why ?](#why-)
 
 ## Install
@@ -182,6 +183,36 @@ shellcheck -x bootstrap tests/run tests/lib.sh tests/*.test.sh
 ```
 
 The same lint and tests run on GitHub Actions for every push.
+
+## CI
+
+`.github/workflows/tests.yml` lints and runs `tests/run` on `ubuntu-24.04` and
+`macos-latest` for every push and pull request. A failure does not undo the
+push; it marks the commit red on GitHub.
+
+Check or start a run with the `gh` CLI:
+
+```sh
+gh run list --workflow tests.yml --limit 5   # recent runs
+gh run watch --exit-status                   # follow a run; non-zero if it fails
+gh run view <run-id> --log-failed            # logs of the failing steps only
+gh workflow run tests.yml                    # start a run by hand (workflow_dispatch)
+```
+
+Dependabot (`.github/dependabot.yml`) checks the actions used in the workflow
+once a month and opens a pull request when one has a new version. It only
+edits the workflow file on GitHub; your clone changes when you pull. To handle
+one:
+
+```sh
+gh pr list --app dependabot                  # find the pull request
+gh pr checks <number> --watch                # wait for the tests on that PR
+gh pr merge <number> --squash --delete-branch   # merge it if they pass
+git pull                                     # bring the change into your clone
+```
+
+If the tests fail, `gh run view <run-id> --log-failed` shows why; fix it on the
+PR branch or close the PR with `gh pr close <number>`.
 
 ## Why ?
 - Learn some Zsh
