@@ -267,7 +267,7 @@ for opt in extendedglob ksharrays shwordsplit nounset nullglob noglob globsubst 
     (
         setopt $opt
         source $ROOT/dotfiles
-        cd $HOME
+        cd "$HOME"
         print -r -- "$opt: $(dotfiles --print-status 2>&1 | tr '\n' ' ')"
     )
 done
