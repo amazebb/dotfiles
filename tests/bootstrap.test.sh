@@ -160,13 +160,48 @@ test_tmpdir_is_honoured_and_not_leaked() {
 
 # --- known open (expected to fail until fixed) ----------------------------
 
-xfail_double_dash_keeps_operands() {
+test_double_dash_keeps_operands() {
     mkrepo "$T/r.git" ".zshrc=new"
     bs 'n\n' -- "$T/r.git"
-    assert_contains "$OUT" "Cloning from"
+    assert_contains "$OUT" "Cloning from $T/r.git"
 }
 
-xfail_cleartext_transport_refused() {
-    bs 'n\n' http://127.0.0.1:9/x.git
-    assert_not_contains "$OUT" "Cloning into" "http:// transport was attempted"
+test_option_like_operand_after_double_dash_is_not_a_git_option() {
+    bs 'n\n' -- --upload-pack=true
+    ((RC != 0)) || fail "expected clone to fail"
+    assert_not_contains "$OUT" "Unknown option"
+    assert_contains "$OUT" "git clone failed"
+    assert_contains "$OUT" "repository '--upload-pack=true' does not exist" "git parsed the operand as an option"
+}
+
+test_cleartext_transports_refused() {
+    local url
+    for url in http://127.0.0.1:9/x.git git://127.0.0.1:9/x.git; do
+        bs 'n\n' "$url"
+        ((RC != 0)) || fail "$url was accepted"
+        assert_contains "$OUT" "not allowed" "$url"
+        assert_not_contains "$OUT" "Failed to connect" "a connection to $url was attempted"
+    done
+}
+
+test_ssh_style_url_is_not_blocked_by_transport_rules() {
+    # no server here: the clone must fail on the connection, not on the transport rule
+    bs 'n\n' nobody@127.0.0.1:9/x.git
+    assert_not_contains "$OUT" "not allowed"
+}
+
+test_backup_failure_midway_restores_moved_files() {
+    trap 'chmod -R u+w "$T"; teardown' EXIT
+    mkrepo "$T/r.git" ".a=new" ".config/f=new"
+    echo old >"$HOME/.a"
+    mkdir "$HOME/.config"
+    echo old >"$HOME/.config/f"
+    chmod 555 "$HOME/.config"
+    bs 'y\ny\ny\n' -f "$T/r.git"
+    ((RC != 0)) || fail "expected failure"
+    assert_contains "$OUT" "Nothing was changed"
+    assert_content "$HOME/.a" old
+    assert_content "$HOME/.config/f" old
+    assert_no_file "$HOME/.dotfiles"
+    [[ -z $(find "$HOME" -maxdepth 1 -name '.dotfiles-backup-*') ]] || fail "empty backup dir left behind"
 }

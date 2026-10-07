@@ -87,6 +87,9 @@ dotfiles() {
             ;;
         *)
             "${_ZEX[@]}" "$@"
+            local rc=$?
+            _ZDL="" # add, mv, rm, commit... may change the tracked folders: rebuild _ZDF on the next call
+            return $rc
             ;;
     esac
 }

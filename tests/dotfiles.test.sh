@@ -172,3 +172,36 @@ EOF
     )
     assert_eq "$out" keepme
 }
+
+test_new_subfolder_of_tracked_folder_is_tracked_after_add() {
+    # whitelist-style ~/.gitignore, as in a real dotfiles repo
+    mkrepo "$HOME/.dotfiles" ".gitignore=*"$'\n''!.gitignore'$'\n''!.config'$'\n''!.config/nvim'$'\n''!.config/nvim/**' ".config/nvim/init.lua=i"
+    git --git-dir="$HOME/.dotfiles" --work-tree="$HOME" checkout -q -f
+    git --git-dir="$HOME/.dotfiles" config status.showUntrackedFiles no
+    out=$(zrun <<'EOF'
+source $ROOT/dotfiles
+cd $HOME/.config/nvim
+dotfiles status --short
+mkdir -p lua
+echo x > lua/p.lua
+dotfiles add lua/p.lua
+cd lua
+dotfiles --print-status
+EOF
+    )
+    assert_eq "$(sed -n 2p <<<"$out")" 1 "new subfolder not seen as tracked"
+}
+
+test_passthrough_commands_keep_their_exit_status() {
+    mkdotrepo
+    out=$(zrun <<'EOF'
+source $ROOT/dotfiles
+cd $HOME
+dotfiles rev-parse --verify no-such-ref >/dev/null 2>&1
+print -r -- "rc=$?"
+dotfiles rev-parse --verify HEAD >/dev/null 2>&1
+print -r -- "rc=$?"
+EOF
+    )
+    assert_eq "$out" "rc=128"$'\n'"rc=0"
+}

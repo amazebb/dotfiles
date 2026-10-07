@@ -84,6 +84,21 @@ unsafe_path() {
     return 1
 }
 
+# Move every file in MOVED back from BACKUP_DIR to $HOME; return 1 if any could not be restored
+rollback_backup() {
+    local f failed=0
+    if ((${#MOVED[@]})); then
+        for f in "${MOVED[@]}"; do
+            if ! mv "$BACKUP_DIR/$f" "$HOME/$f"; then
+                msg "Could not restore $(printf '%q' "$f"); it is in $BACKUP_DIR" RED
+                failed=1
+            fi
+        done
+    fi
+    find "$BACKUP_DIR" -depth -type d -empty -delete 2>/dev/null || true
+    return "$failed"
+}
+
 noargs() { if ((!$1)); then info "Error: no arguments provided"; usage; exit 1; fi; }
 
 usage() {
@@ -155,6 +170,10 @@ while (($#)); do
         ;;
     --)
         shift
+        while (($#)); do
+            REPO_URL=$1
+            shift
+        done
         break
         ;;
     -*)  warn "Unknown option: $1" ;;
@@ -182,7 +201,11 @@ trap cleanup EXIT
 
 $DRY_RUN && info "Dry-run, no changes will be made:"
 info "Cloning from $REPO_URL"
-git clone --bare -c transfer.fsckObjects=true "$REPO_URL" "$WORK/repo" || warn "git clone failed"
+# https, ssh (incl. user@host:path) and local paths only: no http://, git:// or ext::
+git clone --bare -c transfer.fsckObjects=true \
+    -c protocol.allow=never -c protocol.https.allow=always \
+    -c protocol.ssh.allow=always -c protocol.file.allow=always \
+    -- "$REPO_URL" "$WORK/repo" || warn "git clone failed"
 
 # Helper: run git against the temp bare repo with $HOME as work tree
 _git() {
@@ -306,16 +329,26 @@ if ((${#EXISTING[@]})); then
     BACKUP_DIR="$HOME/.dotfiles-backup-$(date +%Y%m%d-%H%M%S)"
     mkdir -p "$BACKUP_DIR"
     chmod 700 "$BACKUP_DIR"
+    MOVED=()
     for file in "${EXISTING[@]}"; do
-        mkdir -p "$BACKUP_DIR/$(dirname "$file")"
-        mv "$HOME/$file" "$BACKUP_DIR/$file"
+        if mkdir -p "$BACKUP_DIR/$(dirname "$file")" && mv "$HOME/$file" "$BACKUP_DIR/$file"; then
+            MOVED+=("$file")
+        else
+            msg "Backup of $(printf '%q' "$file") failed; restoring the files already moved." RED
+            rollback_backup || warn "Some files could not be restored, see above."
+            warn "Nothing was changed."
+        fi
     done
     info "Backed up ${#EXISTING[@]} file(s) to $BACKUP_DIR"
     echo ""
 fi
 
 # --- 7. Move bare repo and checkout ---
-mv "$WORK/repo" "$DOTFILES_DIR"
+if ! mv "$WORK/repo" "$DOTFILES_DIR"; then
+    msg "Could not move the repo to $DOTFILES_DIR." RED
+    rollback_backup || warn "Some files could not be restored, see above."
+    warn "Nothing was changed."
+fi
 WORK="" # nothing left to clean up
 
 dotfiles() {
