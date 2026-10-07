@@ -95,7 +95,9 @@ rollback_backup() {
             fi
         done
     fi
-    find "$BACKUP_DIR" -depth -type d -empty -delete 2>/dev/null || true
+    if [[ -n $BACKUP_DIR ]]; then
+        find "$BACKUP_DIR" -depth -type d -empty -delete 2>/dev/null || true
+    fi
     return "$failed"
 }
 
@@ -146,6 +148,8 @@ REPO_URL=""
 DRY_RUN=true
 WORK=""
 VERBOSE=false
+BACKUP_DIR=""
+MOVED=()
 
 cleanup() {
     local exit_code=$?
@@ -329,7 +333,6 @@ if ((${#EXISTING[@]})); then
     BACKUP_DIR="$HOME/.dotfiles-backup-$(date +%Y%m%d-%H%M%S)"
     mkdir -p "$BACKUP_DIR"
     chmod 700 "$BACKUP_DIR"
-    MOVED=()
     for file in "${EXISTING[@]}"; do
         if mkdir -p "$BACKUP_DIR/$(dirname "$file")" && mv "$HOME/$file" "$BACKUP_DIR/$file"; then
             MOVED+=("$file")

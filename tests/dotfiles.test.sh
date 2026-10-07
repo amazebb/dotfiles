@@ -276,3 +276,16 @@ EOF
     bad=$(grep -v ": main 1 $HOME/.dotfiles $" <<<"$out" || true)
     [[ -z $bad ]] || fail "breaks under:"$'\n'"$bad"
 }
+
+test_missing_repo_message_is_not_repeated_by_passthrough_commands() {
+    mkwork
+    out=$(zrun <<'EOF'
+source $ROOT/dotfiles
+cd $T/work
+dotfiles status >/dev/null
+dotfiles log --oneline >/dev/null
+dotfiles status >/dev/null
+EOF
+    )
+    assert_eq "$(grep -c 'No .* repo found' <<<"$out")" 1
+}

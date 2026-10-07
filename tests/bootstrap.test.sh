@@ -205,3 +205,27 @@ test_backup_failure_midway_restores_moved_files() {
     assert_no_file "$HOME/.dotfiles"
     [[ -z $(find "$HOME" -maxdepth 1 -name '.dotfiles-backup-*') ]] || fail "empty backup dir left behind"
 }
+
+test_repo_move_failure_with_nothing_backed_up_reports_cleanly() {
+    trap 'chmod -R u+w "$T"; teardown' EXIT
+    mkrepo "$T/r.git" ".zshrc=new"
+    mkdir "$HOME/sub"
+    chmod 555 "$HOME/sub"
+    bs 'y\ny\n' -f -d "$HOME/sub/x" "$T/r.git"
+    ((RC != 0)) || fail "expected failure"
+    assert_contains "$OUT" "Nothing was changed"
+    assert_not_contains "$OUT" "unbound variable"
+}
+
+test_repo_move_failure_after_backup_restores_files() {
+    trap 'chmod -R u+w "$T"; teardown' EXIT
+    mkrepo "$T/r.git" ".zshrc=new"
+    echo old >"$HOME/.zshrc"
+    mkdir "$HOME/sub"
+    chmod 555 "$HOME/sub"
+    bs 'y\ny\ny\n' -f -d "$HOME/sub/x" "$T/r.git"
+    ((RC != 0)) || fail "expected failure"
+    assert_contains "$OUT" "Nothing was changed"
+    assert_content "$HOME/.zshrc" old
+    [[ -z $(find "$HOME" -maxdepth 1 -name '.dotfiles-backup-*') ]] || fail "backup dir left behind"
+}
