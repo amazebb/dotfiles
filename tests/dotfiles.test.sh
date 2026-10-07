@@ -289,3 +289,16 @@ EOF
     )
     assert_eq "$(grep -c 'No .* repo found' <<<"$out")" 1
 }
+
+test_prompt_works_in_a_sha256_dotfiles_repo() {
+    GIT_DEFAULT_HASH=sha256 mkdotrepo
+    assert_eq "$(git --git-dir="$HOME/.dotfiles" rev-parse --show-object-format)" sha256 "fixture is not sha256"
+    out=$(zrun <<'EOF2'
+source $ROOT/dotfiles
+cd $HOME
+print -r -- "x" >> .zshrc
+dotfiles --print-status
+EOF2
+    )
+    assert_eq "$out" "main ~1"$'\n'"1"$'\n'"$HOME/.dotfiles"
+}

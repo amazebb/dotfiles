@@ -285,3 +285,13 @@ test_existing_file_under_dash_led_directory_is_backed_up() {
     assert_content "$HOME/-x/y" new
     assert_content "$(find "$HOME" -maxdepth 1 -name '.dotfiles-backup-*')/-x/y" old
 }
+
+test_installs_a_sha256_repo() {
+    GIT_DEFAULT_HASH=sha256 mkrepo "$T/r.git" ".zshrc=new" ".config/my app/f=x"
+    assert_eq "$(git --git-dir="$T/r.git" rev-parse --show-object-format)" sha256 "fixture is not sha256"
+    bs 'y\ny\n' -f "$T/r.git"
+    ((RC == 0)) || fail "apply failed: $OUT"
+    assert_content "$HOME/.zshrc" new
+    assert_content "$HOME/.config/my app/f" x
+    assert_eq "$(git --git-dir="$HOME/.dotfiles" rev-parse --show-object-format)" sha256
+}
