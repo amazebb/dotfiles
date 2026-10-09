@@ -20,6 +20,19 @@ Zsh dotfiles management
 
 ## Install
 
+```sh
+curl -fsSL https://raw.githubusercontent.com/amazebb/dotfiles/master/install.sh | sh
+```
+
+It asks for two things, then does the three steps below for you:
+
+- `INSTALL_DIR`, default `$HOME/.local/share/zsh/site-functions/dotfiles`
+- `REPO_DOTFILE`, your dotfiles repo on GitHub. Empty or invalid skips the
+  bootstrap. If given, it runs `bootstrap` as a dry-run, then asks whether to
+  review (`-v`) or apply (`-f`).
+
+The steps, one by one:
+
 ### Clone repo
 
 Create `INSTALL_DIR` folder and clone repo
@@ -30,11 +43,10 @@ mkdir -p "$(dirname "$INSTALL_DIR")"
 git clone https://github.com/amazebb/dotfiles.git "$INSTALL_DIR"
 ```
 
-`bootstrap` moves files around your `$HOME`, so read it before you run it. The
-clone follows `main`; to install a known version, check out a commit or tag:
+`bootstrap` moves files around your `$HOME`, so read it before you run it.
 
 ```sh
-git -C "$INSTALL_DIR" checkout <commit-or-tag>
+git -C "$INSTALL_DIR" checkout master
 ```
 
 ### Bootstrap your dotfiles
@@ -49,9 +61,8 @@ go to [Setup autoload of dotfiles function](#setup-autoload-of-dotfiles-function
 REPO_DOTFILE="https://github.com/amazebb/dotfiles-repo.git"
 ```
 
-Give exactly one repo: an `https://` or `ssh` URL (`git@host:user/repo.git`
-works) or a local path. `http://` and `git://` are refused. The files in your
-repo run as you (`.zshrc` and friends), so only use a repo you trust.
+Give exactly one repo. The files in your repo run as you (`.zshrc` and
+friends), so only use a repo you trust.
 
 Run `bootstrap` to preview what will change (dry-run, `-n` is the default).
 
@@ -91,7 +102,7 @@ cat << EOF >> ~/.zshenv
 
 # Custom dotfiles function
 fpath+=( "$INSTALL_DIR" )
-autoload -Uz dotfiles
+autoload -Uz +X dotfiles
 EOF
 ```
 

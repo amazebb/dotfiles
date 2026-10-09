@@ -117,6 +117,9 @@ $(B DESCRIPTION)
     By default runs in dry-run mode: clones to a temp directory, shows
     conflicts and diffs, then exits without modifying \$HOME.
 
+    $(U repo) is an https:// or ssh URL (user@host:path works) or a local path.
+    http://, git:// and ext:: are refused.
+
 $(B OPTIONS)
     $(B -h)         Show this help message
 

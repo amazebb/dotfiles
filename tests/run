@@ -70,6 +70,7 @@ for sh in ${BS_SHELLS:-/bin/bash bash}; do
     export BS_SHELL=$sh
     run_suite "$HERE/bootstrap.test.sh" "[bash $ver]"
 done
+run_suite "$HERE/install.test.sh" "[sh]"
 run_suite "$HERE/dotfiles.test.sh" "[zsh]"
 
 echo

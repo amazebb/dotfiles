@@ -31,8 +31,9 @@ jobs:
       - name: Lint
         run: |
           bash -n bootstrap
+          sh -n install.sh
           zsh -n dotfiles
-          shellcheck -x bootstrap tests/run tests/lib.sh tests/*.test.sh
+          shellcheck -x bootstrap install.sh tests/run tests/lib.sh tests/*.test.sh
 
       - name: Tests
         run: tests/run
