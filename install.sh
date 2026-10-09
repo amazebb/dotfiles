@@ -2,9 +2,12 @@
 # Install the dotfiles function: clone, optional bootstrap (dry-run first), autoload.
 set -eu
 
-ask() { # ask <prompt> <default>; reads the terminal because stdin is the script
+# stdin is the script under `curl | sh`, so answers (ours and bootstrap's) come from fd 3
+exec 3<"${TTY:-/dev/tty}"
+
+ask() { # ask <prompt> <default>
     printf '%s [%s]: ' "$1" "$2" >&2
-    read -r reply </dev/tty || reply=
+    read -r reply <&3 || reply=
     printf '%s\n' "${reply:-$2}"
 }
 
@@ -12,6 +15,15 @@ ask() { # ask <prompt> <default>; reads the terminal because stdin is the script
 DOTFILES_URL=${DOTFILES_URL:-https://github.com/amazebb/dotfiles.git}
 [ -n "${INSTALL_DIR+x}" ] || INSTALL_DIR=$(ask "INSTALL_DIR" "$HOME/.local/share/zsh/site-functions/dotfiles")
 [ -n "${REPO_DOTFILE+x}" ] || REPO_DOTFILE=$(ask "REPO_DOTFILE (https:// URL, empty to skip bootstrap)" "")
+
+case $INSTALL_DIR in
+"~"/*) INSTALL_DIR=$HOME${INSTALL_DIR#"~"} ;;
+/*) ;;
+*) INSTALL_DIR=$PWD/$INSTALL_DIR ;;
+esac
+case $INSTALL_DIR in
+*[\"\$\`\\]*) echo "INSTALL_DIR must not contain \" \$ \` or \\" >&2; exit 1 ;;
+esac
 
 if [ -d "$INSTALL_DIR/.git" ]; then
     git -C "$INSTALL_DIR" checkout master
@@ -24,11 +36,14 @@ fi
 
 case $REPO_DOTFILE in
 https://*)
-    if "$INSTALL_DIR/bootstrap" "$REPO_DOTFILE"; then
-        case $(ask "Review with -v, apply with -f, or skip? (v/f/s)" "s") in
-        v) "$INSTALL_DIR/bootstrap" -v "$REPO_DOTFILE" ;;
-        f) "$INSTALL_DIR/bootstrap" -f "$REPO_DOTFILE" ;;
-        esac
+    if "$INSTALL_DIR/bootstrap" "$REPO_DOTFILE" <&3; then
+        while :; do
+            case $(ask "Review with -v, apply with -f, or skip? (v/f/s)" "s") in
+            v) "$INSTALL_DIR/bootstrap" -v "$REPO_DOTFILE" <&3 || true ;;
+            f) "$INSTALL_DIR/bootstrap" -f "$REPO_DOTFILE" <&3 || true; break ;;
+            *) break ;;
+            esac
+        done
     else
         echo "bootstrap dry-run failed, skipping bootstrap" >&2
     fi

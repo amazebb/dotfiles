@@ -310,18 +310,15 @@ if ((${#CONFLICTS[@]})); then
         printf '  %q\n' "$file"
     done
     echo ""
+fi
 
-    if $DRY_RUN; then
-        info "Dry-run finished"
-        exit 0
-    fi
+if $DRY_RUN; then
+    info "Dry-run finished"
+    exit 0
+fi
 
+if ((${#CONFLICTS[@]})); then
     Q "Backup these files and proceed?"
-else
-    if $DRY_RUN; then
-        info "Dry-run finished"
-        exit 0
-    fi
 fi
 
 info "The following files will be checked out to $HOME:"
