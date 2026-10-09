@@ -295,3 +295,19 @@ test_installs_a_sha256_repo() {
     assert_content "$HOME/.config/my app/f" x
     assert_eq "$(git --git-dir="$HOME/.dotfiles" rev-parse --show-object-format)" sha256
 }
+
+# --- -v review ------------------------------------------------------------
+
+test_verbose_review_opens_filemerge_for_dangling_symlink() {
+    local stubs=$T/stubs to
+    to=$(command -v timeout || command -v gtimeout) || { echo "SKIP: no timeout or gtimeout" >&2; return 0; }
+    mkdir -p "$stubs"
+    printf '#!/bin/sh\necho "$@" >>"%s/opendiff.log"\n' "$T" >"$stubs/opendiff"
+    printf '#!/bin/sh\necho /Applications/Xcode.app/Contents/Developer\n' >"$stubs/xcode-select"
+    printf '#!/bin/sh\nexit 1\n' >"$stubs/pgrep"
+    chmod +x "$stubs"/*
+    mkrepo "$T/r.git" ".zshrc=export A=1"
+    ln -s "$T/nonexistent" "$HOME/.zshrc"
+    "$to" 60 env PATH="$stubs:$(minimal_path)" "$BS_SHELL" "$ROOT/bootstrap" -v "$T/r.git" </dev/null >/dev/null 2>&1 || true
+    assert_file "$T/opendiff.log"
+}
