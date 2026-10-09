@@ -255,7 +255,7 @@ if $VERBOSE; then
             for file in "${CONFLICTS[@]}"; do
                 mkdir -p "$HOME_VIEW/$(dirname -- "$file")"
                 mkdir -p "$REPO_VIEW/$(dirname -- "$file")"
-                cp "$HOME/$file" "$HOME_VIEW/$file"
+                cp -RP "$HOME/$file" "$HOME_VIEW/$file"
                 _git show "HEAD:$file" > "$REPO_VIEW/$file"
             done
             info "Opening FileMerge (current <- repo)... close it when done reviewing."
