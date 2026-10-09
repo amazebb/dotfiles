@@ -13,17 +13,19 @@ ask() { # ask <prompt> <default>
 
 # INSTALL_DIR, REPO_DOTFILE and DOTFILES_URL may be preset in the environment
 DOTFILES_URL=${DOTFILES_URL:-https://github.com/amazebb/dotfiles.git}
-[ -n "${INSTALL_DIR+x}" ] || INSTALL_DIR=$(ask "INSTALL_DIR" "$HOME/.local/share/zsh/site-functions/dotfiles")
+if [ -z "${INSTALL_DIR+x}" ]; then
+    INSTALL_DIR=$(ask "INSTALL_DIR" "$HOME/.local/share/zsh/site-functions/dotfiles")
+    case $INSTALL_DIR in
+    "~" | "~"/*) INSTALL_DIR=$HOME${INSTALL_DIR#"~"} ;;
+    /*) ;;
+    *) INSTALL_DIR=$PWD/$INSTALL_DIR ;;
+    esac
+    case $(ask "Install to $INSTALL_DIR? (y/n)" y) in
+    y | Y) ;;
+    *) echo "Aborted." >&2; exit 1 ;;
+    esac
+fi
 [ -n "${REPO_DOTFILE+x}" ] || REPO_DOTFILE=$(ask "REPO_DOTFILE (user/repo or https:// URL, empty to skip bootstrap)" "")
-
-case $INSTALL_DIR in
-"~"/*) INSTALL_DIR=$HOME${INSTALL_DIR#"~"} ;;
-/*) ;;
-*) INSTALL_DIR=$PWD/$INSTALL_DIR ;;
-esac
-case $INSTALL_DIR in
-*[\"\$\`\\]*) echo "INSTALL_DIR must not contain \" \$ \` or \\" >&2; exit 1 ;;
-esac
 
 [ -d "$INSTALL_DIR/.git" ] || {
     mkdir -p "$(dirname "$INSTALL_DIR")"

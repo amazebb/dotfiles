@@ -67,20 +67,33 @@ test_install_bootstrap_reads_the_terminal() {
     assert_contains "$(cat "$HOME/bootstrap.log")" "in:hello"
 }
 
-test_install_expands_tilde() {
+test_install_expands_tilde_and_confirms_the_path() {
     mksrc
     # shellcheck disable=SC2088
-    OUT=$(TTY=/dev/null DOTFILES_URL=$SRC INSTALL_DIR='~/inst' REPO_DOTFILE='' sh "$ROOT/install.sh" 2>&1 </dev/null) ||
+    printf '~/inst\ny\n' >"$T/tty"
+    OUT=$(TTY=$T/tty DOTFILES_URL=$SRC REPO_DOTFILE='' sh "$ROOT/install.sh" 2>&1 </dev/null) ||
         fail "install failed: $OUT"
+    assert_contains "$OUT" "Install to $HOME/inst? (y/n)"
     assert_file "$HOME/inst/bootstrap"
-    grep -qF "fpath+=( \"$HOME/inst\" )" "$HOME/.zshenv" || fail "fpath not expanded"
 }
 
-test_install_rejects_shell_metacharacters_in_dir() {
+test_install_resolves_a_relative_path_against_the_current_folder() {
     mksrc
-    OUT=$(TTY=/dev/null DOTFILES_URL=$SRC INSTALL_DIR="$HOME/"'x$(touch pwned)' REPO_DOTFILE='' sh "$ROOT/install.sh" 2>&1 </dev/null) &&
-        fail "accepted a metacharacter path"
-    assert_contains "$OUT" "INSTALL_DIR must not contain"
+    mkdir "$T/cwd"
+    printf 'myfolder\ny\n' >"$T/tty"
+    OUT=$(cd "$T/cwd" && TTY=$T/tty DOTFILES_URL=$SRC REPO_DOTFILE='' sh "$ROOT/install.sh" 2>&1 </dev/null) ||
+        fail "install failed: $OUT"
+    assert_contains "$OUT" "Install to $T/cwd/myfolder? (y/n)"
+    assert_file "$T/cwd/myfolder/bootstrap"
+}
+
+test_install_declining_the_path_installs_nothing() {
+    mksrc
+    # shellcheck disable=SC2088
+    printf '~/inst\nn\n' >"$T/tty"
+    OUT=$(TTY=$T/tty DOTFILES_URL=$SRC REPO_DOTFILE='' sh "$ROOT/install.sh" 2>&1 </dev/null) &&
+        fail "install continued after n"
+    assert_no_file "$HOME/inst"
     assert_no_file "$HOME/.zshenv"
 }
 
