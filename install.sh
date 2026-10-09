@@ -25,14 +25,12 @@ case $INSTALL_DIR in
 *[\"\$\`\\]*) echo "INSTALL_DIR must not contain \" \$ \` or \\" >&2; exit 1 ;;
 esac
 
-if [ -d "$INSTALL_DIR/.git" ]; then
-    git -C "$INSTALL_DIR" checkout master
-    git -C "$INSTALL_DIR" pull --ff-only
-else
+[ -d "$INSTALL_DIR/.git" ] || {
     mkdir -p "$(dirname "$INSTALL_DIR")"
     git clone "$DOTFILES_URL" "$INSTALL_DIR"
-    git -C "$INSTALL_DIR" checkout master
-fi
+}
+git -C "$INSTALL_DIR" checkout master
+git -C "$INSTALL_DIR" pull --ff-only
 
 case $REPO_DOTFILE in # user/repo is GitHub shorthand
 *[!A-Za-z0-9._/-]* | */*/* | /* | */ | -* | .*/*) ;;
