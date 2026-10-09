@@ -37,7 +37,7 @@ test_install_without_repo_skips_bootstrap() {
 test_install_non_https_repo_skips_bootstrap() {
     inst "git@github.com:me/repo.git"
     ((RC == 0)) || fail "install failed: $OUT"
-    assert_contains "$OUT" "must start with https://"
+    assert_contains "$OUT" "must be user/repo or start with https://"
     assert_no_file "$HOME/bootstrap.log"
 }
 
@@ -82,4 +82,19 @@ test_install_rejects_shell_metacharacters_in_dir() {
         fail "accepted a metacharacter path"
     assert_contains "$OUT" "INSTALL_DIR must not contain"
     assert_no_file "$HOME/.zshenv"
+}
+
+test_install_expands_github_shorthand() {
+    inst "me/repo"
+    assert_contains "$(cat "$HOME/bootstrap.log")" "bootstrap https://github.com/me/repo.git in:"
+}
+
+test_install_shorthand_keeps_dot_git_suffix() {
+    inst "me/repo.git"
+    assert_contains "$(cat "$HOME/bootstrap.log")" "bootstrap https://github.com/me/repo.git in:"
+}
+
+test_install_shorthand_ignores_paths_and_dash_names() {
+    inst "-x/repo"
+    assert_no_file "$HOME/bootstrap.log"
 }

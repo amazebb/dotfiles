@@ -14,7 +14,7 @@ ask() { # ask <prompt> <default>
 # INSTALL_DIR, REPO_DOTFILE and DOTFILES_URL may be preset in the environment
 DOTFILES_URL=${DOTFILES_URL:-https://github.com/amazebb/dotfiles.git}
 [ -n "${INSTALL_DIR+x}" ] || INSTALL_DIR=$(ask "INSTALL_DIR" "$HOME/.local/share/zsh/site-functions/dotfiles")
-[ -n "${REPO_DOTFILE+x}" ] || REPO_DOTFILE=$(ask "REPO_DOTFILE (https:// URL, empty to skip bootstrap)" "")
+[ -n "${REPO_DOTFILE+x}" ] || REPO_DOTFILE=$(ask "REPO_DOTFILE (user/repo or https:// URL, empty to skip bootstrap)" "")
 
 case $INSTALL_DIR in
 "~"/*) INSTALL_DIR=$HOME${INSTALL_DIR#"~"} ;;
@@ -34,6 +34,11 @@ else
     git -C "$INSTALL_DIR" checkout master
 fi
 
+case $REPO_DOTFILE in # user/repo is GitHub shorthand
+*[!A-Za-z0-9._/-]* | */*/* | /* | */ | -* | .*/*) ;;
+*/*) REPO_DOTFILE=https://github.com/${REPO_DOTFILE%.git}.git ;;
+esac
+
 case $REPO_DOTFILE in
 https://*)
     if "$INSTALL_DIR/bootstrap" "$REPO_DOTFILE" <&3; then
@@ -49,7 +54,7 @@ https://*)
     fi
     ;;
 "") ;;
-*) echo "REPO_DOTFILE must start with https://, skipping bootstrap" >&2 ;;
+*) echo "REPO_DOTFILE must be user/repo or start with https://, skipping bootstrap" >&2 ;;
 esac
 
 if ! grep -qs 'autoload -Uz +X dotfiles' "$HOME/.zshenv"; then

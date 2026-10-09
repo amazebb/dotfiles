@@ -27,7 +27,8 @@ curl -fsSL https://raw.githubusercontent.com/amazebb/dotfiles/master/install.sh 
 It asks for two things, then does the three steps below for you:
 
 - `INSTALL_DIR`, default `$HOME/.local/share/zsh/site-functions/dotfiles`
-- `REPO_DOTFILE`, your dotfiles repo on GitHub. Empty or invalid skips the
+- `REPO_DOTFILE`, your dotfiles repo on GitHub, as `user/repo` or a full
+  `https://` URL. Empty or invalid skips the
   bootstrap. If given, it runs `bootstrap` as a dry-run, then asks whether to
   review (`-v`) or apply (`-f`).
 
