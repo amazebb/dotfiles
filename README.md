@@ -1,5 +1,5 @@
 # Dotfiles
-Zsh dotfiles management 
+Zsh dotfiles management
 
 ## Table of Contents
 
@@ -24,14 +24,13 @@ Zsh dotfiles management
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/amazebb/dotfiles/master/install.sh)"
 ```
 
-Runs the script with your terminal as stdin (works where `curl ... | sh`
-hangs, e.g. iSH). It asks for two things, then does the three steps below for you:
+The script reads your answers from the terminal. It asks for two things (plus
+a y/n confirmation of `INSTALL_DIR`), then does the three steps below for you:
 
 - `INSTALL_DIR`, default `$HOME/.local/share/zsh/site-functions/dotfiles`
 - `REPO_DOTFILE`, your dotfiles repo on GitHub, as `user/repo` or a full
-  `https://` URL. Empty or invalid skips the
-  bootstrap. If given, it runs `bootstrap` as a dry-run, then asks whether to
-  review (`-v`) or apply (`-f`).
+  `https://` URL. Empty or invalid skips the bootstrap. If given, it runs
+  `bootstrap` as a dry-run, then asks whether to review (`-v`) or apply (`-f`).
 
 The steps, one by one:
 
@@ -43,12 +42,6 @@ Create `INSTALL_DIR` folder and clone repo
 INSTALL_DIR="$HOME/.local/share/zsh/site-functions/dotfiles"
 mkdir -p "$(dirname "$INSTALL_DIR")"
 git clone https://github.com/amazebb/dotfiles.git "$INSTALL_DIR"
-```
-
-`bootstrap` moves files around your `$HOME`, so read it before you run it.
-
-```sh
-git -C "$INSTALL_DIR" checkout master
 ```
 
 ### Bootstrap your dotfiles
@@ -63,8 +56,8 @@ go to [Setup autoload of dotfiles function](#setup-autoload-of-dotfiles-function
 REPO_DOTFILE="https://github.com/amazebb/dotfiles-repo.git"
 ```
 
-Give exactly one repo. The files in your repo run as you (`.zshrc` and
-friends), so only use a repo you trust.
+The files in your repo run as you (`.zshrc` and friends), so only use a repo
+you trust.
 
 Run `bootstrap` to preview what will change (dry-run, `-n` is the default).
 
@@ -113,7 +106,7 @@ in `~/.zshrc`.
 
 ## Overview
 
-This repo contains two files, developed and tested on macOS only, so no
+This repo contains three files, developed on macOS (CI also runs Linux), so no
 guarantees elsewhere:
 
 - **dotfiles**: A Zsh function that wraps git commands for the bare repo, it
@@ -121,6 +114,8 @@ guarantees elsewhere:
   `sha1` and `sha256`.
 - **bootstrap**: A bash script (runs on bash 3.2 and 5) for initial setup that
   clones the bare repo and handles file conflicts
+- **install.sh**: A POSIX `sh` installer that clones this repo, optionally runs
+  `bootstrap`, and sets up the autoload
 
 ## Architecture
 
@@ -179,11 +174,11 @@ upstream (only when an upstream is set).
 ## Tests
 
 ```sh
-tests/run              # bootstrap on bash 3.2 and bash 5, dotfiles on zsh
+tests/run              # bootstrap on bash 3.2 and bash 5, install on sh, dotfiles on zsh
 tests/run -k prompt    # only tests whose name contains "prompt"
 ```
 
-Needs `git`, `zsh` and `xxd`, and a normal user (not root: the permission tests
+Needs `git`, `zsh` and `xxd` (and `shellcheck` for the lint), and a normal user (not root: the permission tests
 rely on read-only folders). Tests run in a scratch `$HOME`. `xfail_*` tests are
 known open bugs and must fail; an `XPASS` means the bug is fixed, so rename it
 to `test_*`.
@@ -191,8 +186,8 @@ to `test_*`.
 Lint with:
 
 ```sh
-bash -n bootstrap && zsh -n dotfiles
-shellcheck -x bootstrap tests/run tests/lib.sh tests/*.test.sh
+bash -n bootstrap && sh -n install.sh && zsh -n dotfiles
+shellcheck -x bootstrap install.sh tests/run tests/lib.sh tests/*.test.sh
 ```
 
 The same lint and tests run on GitHub Actions for every push.
