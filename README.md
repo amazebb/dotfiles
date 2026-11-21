@@ -21,10 +21,11 @@ Zsh dotfiles management
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/amazebb/dotfiles/master/install.sh | sh
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/amazebb/dotfiles/master/install.sh)"
 ```
 
-It asks for two things, then does the three steps below for you:
+Runs the script with your terminal as stdin (works where `curl ... | sh`
+hangs, e.g. iSH). It asks for two things, then does the three steps below for you:
 
 - `INSTALL_DIR`, default `$HOME/.local/share/zsh/site-functions/dotfiles`
 - `REPO_DOTFILE`, your dotfiles repo on GitHub, as `user/repo` or a full

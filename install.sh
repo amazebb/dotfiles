@@ -2,8 +2,11 @@
 # Install the dotfiles function: clone, optional bootstrap (dry-run first), autoload.
 set -eu
 
-# stdin is the script under `curl | sh`, so answers (ours and bootstrap's) come from fd 3
-exec 3<"${TTY:-/dev/tty}"
+# answers (ours and bootstrap's) come from fd 3: $TTY, else stdin when it is a
+# terminal (`sh -c "$(curl ...)"`), else /dev/tty (`curl | sh`, where stdin is the script)
+if [ -n "${TTY:-}" ]; then exec 3<"$TTY"
+elif [ -t 0 ]; then exec 3<&0
+else exec 3</dev/tty; fi
 
 ask() { # ask <prompt> <default>
     printf '%s [%s]: ' "$1" "$2" >&2
