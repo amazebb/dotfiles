@@ -171,6 +171,8 @@ upstream (only when an upstream is set).
   - 1 if dotfiles repo, 0 standard git repo
   - path to .git/.dotfiles folder
 
+Outside a git repo it prints nothing and exits 1.
+
 ## Tests
 
 ```sh

@@ -19,7 +19,7 @@ _zz_dot_init() {
     [[ $(command -v git) ]] || { echo "dotfiles: 'git' command not found in PATH" >&2; return 1; }
     [[ -d ${_ZD[repo]} ]] || { echo "dotfiles: No ${_ZD[repo]} repo found" >&2; return 1; }
 
-    local root=${_ZD[repo]:h} dir
+    local root=${${_ZD[repo]:h}:A} dir
     local -a files dirs
     files=("${(@0)$(git -C "$root" --git-dir="${_ZD[repo]}" --work-tree="$root" \
         ls-files -z --full-name --exclude-standard)}")
@@ -40,7 +40,7 @@ _zz_dot_is_tracked() {
     _ZD[track]=0
     _ZD[gitdir]=""
     for folder in "${_ZDF[@]}"; do
-        [[ $PWD == "$folder" ]] && _ZD[track]=1 && break
+        [[ ${PWD:A} == "$folder" ]] && _ZD[track]=1 && break
     done
     if ((_ZD[track])); then
         _ZEX=("git" "--git-dir=${_ZD[repo]}" "--work-tree=${_ZD[repo]:h}")
