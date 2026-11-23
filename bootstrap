@@ -99,7 +99,11 @@ rollback_backup() {
 # Exactly one repo operand is allowed
 setrepo() {
     [[ -z $REPO_URL ]] || warn "Error: only one repo may be given ($REPO_URL, $1)"
-    REPO_URL=$1
+    case $1 in # user/repo is GitHub shorthand
+    *[!A-Za-z0-9._/-]* | */*/* | /* | */ | -* | .*/*) REPO_URL=$1 ;;
+    */*) REPO_URL=https://github.com/${1%.git}.git ;;
+    *) REPO_URL=$1 ;;
+    esac
 }
 
 noargs() { if ((!$1)); then info "Error: no arguments provided"; usage; exit 1; fi; }
@@ -133,16 +137,20 @@ $(B OPTIONS)
     $(B -d) $(U dir)     Dotfiles repo folder $(I '(default: $HOME/.dotfiles)')
 
 $(B ARGUMENTS)
-    $(U repo)        Repo URL to clone from $(I required)
+    $(U repo)        Repo URL, or $(I user/repo) for GitHub $(I required)
 
 $(B EXAMPLES)
     Dry-run preview from a remote repo
 
-        bootstrap git@github.com:user/dotfiles.git
+        bootstrap https://github.com/amazebb/dotfiles-repo.git
+
+    Same, using the GitHub shorthand
+
+        bootstrap amazebb/dotfiles-repo
 
     Apply changes after reviewing the dry-run
 
-        bootstrap -f git@github.com:user/dotfiles.git
+        bootstrap -f amazebb/dotfiles-repo
 
 EOF
 }
