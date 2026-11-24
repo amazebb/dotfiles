@@ -258,7 +258,8 @@ done <"$WORK/files"
 $DRY_RUN || info "These files will run as your user (shell rc, etc.). Only proceed with repos you trust."
 $VERBOSE || info "Use -v to review diffs of existing files first."
 
-# --- 5. Show diffs of existing files, then confirm ---
+# --- 5. Review existing files, then confirm ---
+INLINE_DIFF=false
 if $VERBOSE; then
     if ((${#CONFLICTS[@]})); then
         if command -v opendiff >/dev/null 2>&1 && xcode-select -p 2>/dev/null | grep -q "Xcode.app"; then
@@ -281,21 +282,12 @@ if $VERBOSE; then
                 vimdiff "$HOME/$file" "$REPO_TMP"
             done
         else
-            echo ""
-            info "Diffs (existing <- repo):"
-            for file in "${CONFLICTS[@]}"; do
-                echo "--- $(printf '%q' "$file") ---"
-                _git show "HEAD:$file" >"$WORK/cmp" || true
-                diff "$HOME/$file" "$WORK/cmp" | cat -v || true
-                echo ""
-            done
+            INLINE_DIFF=true # printed under each name in the conflicting list
         fi
     else
         info "No diffs, all existing files are identical."
     fi
 fi
-
-$DRY_RUN || Q "Are the above dotfiles what you expect?"
 
 if ((${#NEW[@]})); then
     echo ""
@@ -310,9 +302,16 @@ if ((${#CONFLICTS[@]})); then
     info "Conflicting files (${#CONFLICTS[@]}):"
     for file in "${CONFLICTS[@]}"; do
         printf '  %q\n' "$file"
+        if $INLINE_DIFF; then
+            _git show "HEAD:$file" >"$WORK/cmp" || true
+            diff "$HOME/$file" "$WORK/cmp" | cat -v || true
+            echo ""
+        fi
     done
     echo ""
 fi
+
+$DRY_RUN || Q "Are the above dotfiles what you expect?"
 
 if $DRY_RUN; then
     info "Dry-run finished"
