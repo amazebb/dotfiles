@@ -130,7 +130,7 @@ $(B OPTIONS)
     $(B -n)         Dry-run: clone to a temp directory, show conflicts/diffs,
                then exit without modifying \$HOME $(I '(default)')
 
-    $(B -v)         Show diffs of changes and contents of new files
+    $(B -v)         Show diffs of files that already exist
 
     $(B -f)         Override dry-run mode and check out files
 
@@ -257,9 +257,9 @@ done <"$WORK/files"
 ((${#EXISTING[@]} + ${#NEW[@]})) || warn "No files found in repo"
 
 $DRY_RUN || info "These files will run as your user (shell rc, etc.). Only proceed with repos you trust."
-$VERBOSE || info "Use -v to review diffs and new file contents first."
+$VERBOSE || info "Use -v to review diffs of existing files first."
 
-# --- 5. Show diffs and new file contents, then confirm ---
+# --- 5. Show diffs of existing files, then confirm ---
 if $VERBOSE; then
     if ((${#CONFLICTS[@]})); then
         if command -v opendiff >/dev/null 2>&1 && xcode-select -p 2>/dev/null | grep -q "Xcode.app"; then
@@ -293,14 +293,6 @@ if $VERBOSE; then
         fi
     else
         info "No diffs, all existing files are identical."
-    fi
-
-    if ((${#NEW[@]})); then
-        for file in "${NEW[@]}"; do
-            echo "--- new: $(printf '%q' "$file") ---"
-            _git show "HEAD:$file" | cat -v
-            echo ""
-        done
     fi
 fi
 
