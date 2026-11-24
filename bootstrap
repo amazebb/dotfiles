@@ -233,6 +233,8 @@ CONFLICTS=()
 EXISTING=()
 NEW=()
 # NUL-delimited so names with newlines/odd characters can't corrupt the lists
+# temp files instead of <(...): iSH has no /dev/fd
+_git ls-tree -r -z --name-only HEAD >"$WORK/files" 2>/dev/null || true
 while IFS= read -r -d '' file; do
     [[ -z "$file" ]] && continue
     if unsafe_path "$file"; then
@@ -243,14 +245,14 @@ while IFS= read -r -d '' file; do
     fi
     if [[ -e "$HOME/$file" || -L "$HOME/$file" ]]; then
         EXISTING+=("$file")
-        if ! diff -q "$HOME/$file" <(_git show "HEAD:$file") >/dev/null 2>&1; then
+        if ! { _git show "HEAD:$file" >"$WORK/cmp" 2>/dev/null && diff -q "$HOME/$file" "$WORK/cmp" >/dev/null 2>&1; }; then
             CONFLICTS+=("$file")
         fi
     else
         NEW+=("$file")
     fi
     printf '%q\n' "$file"
-done < <(_git ls-tree -r -z --name-only HEAD 2>/dev/null)
+done <"$WORK/files"
 
 ((${#EXISTING[@]} + ${#NEW[@]})) || warn "No files found in repo"
 
@@ -284,7 +286,8 @@ if $VERBOSE; then
             info "Diffs (existing <- repo):"
             for file in "${CONFLICTS[@]}"; do
                 echo "--- $(printf '%q' "$file") ---"
-                diff "$HOME/$file" <(_git show "HEAD:$file") | cat -v || true
+                _git show "HEAD:$file" >"$WORK/cmp" || true
+                diff "$HOME/$file" "$WORK/cmp" | cat -v || true
                 echo ""
             done
         fi
@@ -332,7 +335,7 @@ fi
 info "The following files will be checked out to $HOME:"
 while IFS= read -r -d '' file; do
     printf '  %q\n' "$file"
-done < <(_git ls-tree -r -z --name-only HEAD)
+done <"$WORK/files"
 echo ""
 
 Q "Proceed with checkout?"
