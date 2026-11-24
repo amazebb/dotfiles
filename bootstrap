@@ -218,7 +218,7 @@ trap cleanup EXIT
 $DRY_RUN && info "Dry-run, no changes will be made:"
 info "Cloning from $REPO_URL"
 # https, ssh (incl. user@host:path) and local paths only: no http://, git:// or ext::
-git clone --bare -c transfer.fsckObjects=true \
+git clone -q --bare -c transfer.fsckObjects=true \
     -c protocol.allow=never -c protocol.https.allow=always \
     -c protocol.ssh.allow=always -c protocol.file.allow=always \
     -- "$REPO_URL" "$WORK/repo" || warn "git clone failed"

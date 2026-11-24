@@ -157,7 +157,7 @@ test_tmpdir_is_honoured_and_not_leaked() {
     probe=$(TMPDIR=$T/tmp mktemp -d)
     rmdir "$probe"
     if [[ $probe == "$T/tmp/"* ]]; then
-        assert_contains "$OUT" "Cloning into bare repository '$T/tmp/"
+        assert_contains "$(grep ' clone ' "$T/git.log")" " $T/tmp/"
     fi
     local bad
     bad=$(grep -v "^TMPDIR=\[$T/tmp\] " "$T/git.log" || true)
