@@ -251,7 +251,6 @@ while IFS= read -r -d '' file; do
     else
         NEW+=("$file")
     fi
-    printf '%q\n' "$file"
 done <"$WORK/files"
 
 ((${#EXISTING[@]} + ${#NEW[@]})) || warn "No files found in repo"
@@ -323,12 +322,6 @@ fi
 if ((${#CONFLICTS[@]})); then
     Q "Backup these files and proceed?"
 fi
-
-info "The following files will be checked out to $HOME:"
-while IFS= read -r -d '' file; do
-    printf '  %q\n' "$file"
-done <"$WORK/files"
-echo ""
 
 Q "Proceed with checkout?"
 
