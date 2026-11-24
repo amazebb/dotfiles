@@ -91,7 +91,7 @@ test_backup_dir_is_private() {
 
 test_only_exact_yes_proceeds() {
     mkrepo "$T/r.git" ".zshrc=new"
-    bs 'maybe\n' "$T/r.git"
+    bs 'maybe\n' -f "$T/r.git"
     ((RC != 0)) || fail "'maybe' was accepted"
     assert_contains "$OUT" "Aborted."
 }
@@ -238,7 +238,7 @@ test_repo_move_failure_after_backup_restores_files() {
 
 test_stdin_eof_says_aborted() {
     mkrepo "$T/r.git" ".zshrc=new"
-    bs '' "$T/r.git"
+    bs '' -f "$T/r.git"
     ((RC != 0)) || fail "expected non-zero at EOF"
     assert_contains "$OUT" "Aborted."
 }
