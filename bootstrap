@@ -142,15 +142,15 @@ $(B ARGUMENTS)
 $(B EXAMPLES)
     Dry-run preview from a remote repo
 
-        bootstrap https://github.com/amazebb/dotfiles-repo.git
+        ./bootstrap https://github.com/amazebb/dotfiles-repo.git
 
     Same, using the GitHub shorthand
 
-        bootstrap amazebb/dotfiles-repo
+        ./bootstrap amazebb/dotfiles-repo
 
     Apply changes after reviewing the dry-run
 
-        bootstrap -f amazebb/dotfiles-repo
+        ./bootstrap -f amazebb/dotfiles-repo
 
 EOF
 }
