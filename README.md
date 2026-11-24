@@ -83,6 +83,7 @@ exist are moved to `$HOME/.dotfiles-backup-<timestamp>.<random>` (readable only
 by you) so the checkout can succeed, and are moved back if the backup or the
 move of the repo fails. It refuses a repo that has absolute paths, `..`, `.` or
 `.git` components, or whose folders in `$HOME` are symlinks or plain files.
+`-b branch` installs that branch; without it, a repo with several branches asks which one.
 `-d dir` puts the bare repo somewhere other than `$HOME/.dotfiles`.
 
 Your dotfiles repository should now be setup on your local machine.

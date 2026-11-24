@@ -311,3 +311,63 @@ test_verbose_review_opens_filemerge_for_dangling_symlink() {
     "$to" 60 env PATH="$stubs:$(minimal_path)" "$BS_SHELL" "$ROOT/bootstrap" -v "$T/r.git" </dev/null >/dev/null 2>&1 || true
     assert_file "$T/opendiff.log"
 }
+
+# addbranch <bare.git> <branch> <file=content>  commit one file on a new branch
+addbranch() {
+    local w
+    w=$(mktemp -d "$T/wt.XXXXXX")
+    git clone -q "$1" "$w"
+    git -C "$w" checkout -q -b "$2"
+    printf '%s\n' "${3#*=}" >"$w/${3%%=*}"
+    git -C "$w" add -A
+    git -C "$w" commit -q -m "$2"
+    git -C "$w" push -q origin "$2"
+}
+
+test_single_branch_does_not_prompt() {
+    mkrepo "$T/r.git" ".zshrc=new"
+    bs '' "$T/r.git"
+    ((RC == 0)) || fail "dry-run failed: $OUT"
+    assert_not_contains "$OUT" "Branches:"
+}
+
+test_dash_b_installs_that_branch() {
+    mkrepo "$T/r.git" ".zshrc=main"
+    addbranch "$T/r.git" ish ".zshrc=ish"
+    bs 'y\ny\n' -f -b ish "$T/r.git"
+    ((RC == 0)) || fail "apply failed: $OUT"
+    assert_eq "$(cat "$HOME/.zshrc")" "ish"
+    assert_not_contains "$OUT" "Branches:"
+}
+
+test_unknown_branch_is_refused() {
+    mkrepo "$T/r.git" ".zshrc=main"
+    bs '' -b nope "$T/r.git"
+    ((RC != 0)) || fail "unknown branch accepted"
+    assert_contains "$OUT" "Branch not found"
+}
+
+test_several_branches_prompt_for_one() {
+    mkrepo "$T/r.git" ".zshrc=main"
+    addbranch "$T/r.git" ish ".zshrc=ish"
+    bs '1\ny\ny\n' -f "$T/r.git"
+    ((RC == 0)) || fail "apply failed: $OUT"
+    assert_contains "$OUT" "Branches:"
+    assert_eq "$(cat "$HOME/.zshrc")" "ish"
+}
+
+test_several_branches_empty_answer_uses_default() {
+    mkrepo "$T/r.git" ".zshrc=main"
+    addbranch "$T/r.git" ish ".zshrc=ish"
+    bs '\ny\ny\n' -f "$T/r.git"
+    ((RC == 0)) || fail "apply failed: $OUT"
+    assert_eq "$(cat "$HOME/.zshrc")" "main"
+}
+
+test_several_branches_bad_answer_aborts() {
+    mkrepo "$T/r.git" ".zshrc=main"
+    addbranch "$T/r.git" ish ".zshrc=ish"
+    bs '9\n' "$T/r.git"
+    ((RC != 0)) || fail "bad branch answer accepted"
+    assert_contains "$OUT" "Aborted."
+}

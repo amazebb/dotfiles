@@ -114,7 +114,7 @@ $(B NAME)
     $(B bootstrap) - Safe bare repo dotfiles installer
 
 $(B SYNOPSIS)
-    $(B "bootstrap [-h] [-n] [-v] [-f] [-d dir]") $(U repo)
+    $(B "bootstrap [-h] [-n] [-v] [-f] [-b branch] [-d dir]") $(U repo)
 
 $(B DESCRIPTION)
     Clone a bare dotfiles repository and check out tracked files into \$HOME.
@@ -134,6 +134,8 @@ $(B OPTIONS)
 
     $(B -f)         Override dry-run mode and check out files
 
+    $(B -b) $(U branch)  Branch to install $(I '(default: ask if the repo has several)')
+
     $(B -d) $(U dir)     Dotfiles repo folder $(I '(default: $HOME/.dotfiles)')
 
 $(B ARGUMENTS)
@@ -152,6 +154,10 @@ $(B EXAMPLES)
 
         ./bootstrap -f amazebb/dotfiles-repo
 
+    Install a specific branch
+
+        ./bootstrap -b ish amazebb/dotfiles-repo
+
 EOF
 }
 
@@ -160,6 +166,7 @@ REPO_URL=""
 DRY_RUN=true
 WORK=""
 VERBOSE=false
+BRANCH=""
 BACKUP_DIR=""
 MOVED=()
 
@@ -180,6 +187,10 @@ while (($#)); do
     -v) VERBOSE=true ;;
     -f) DRY_RUN=false ;;
     -h) usage && exit 0 ;;
+    -b)
+        BRANCH=$(argval "$@")
+        shift
+        ;;
     -d)
         DOTFILES_DIR=$(argval "$@")
         shift
@@ -227,6 +238,37 @@ git clone -q --bare -c transfer.fsckObjects=true \
 _git() {
     git --git-dir="$WORK/repo" "$@"
 }
+
+# --- 3b. Pick the branch: HEAD of the bare repo decides what is installed ---
+BRANCHES=()
+_git for-each-ref --format='%(refname:short)' refs/heads >"$WORK/branches"
+while IFS= read -r b; do
+    BRANCHES+=("$b")
+done <"$WORK/branches"
+if [[ -n "$BRANCH" ]]; then
+    _git show-ref --verify --quiet "refs/heads/$BRANCH" || warn "Branch not found in repo: $BRANCH"
+elif ((${#BRANCHES[@]} > 1)); then
+    DEFAULT=$(_git symbolic-ref --short HEAD 2>/dev/null || true)
+    echo ""
+    info "Branches:"
+    for i in "${!BRANCHES[@]}"; do
+        printf '  %d) %s%s\n' "$((i + 1))" "${BRANCHES[i]}" "$([[ ${BRANCHES[i]} == "$DEFAULT" ]] && echo ' (default)')"
+    done
+    reply=""
+    read -r -p "Branch to install [1-${#BRANCHES[@]}, empty for default]: " reply || true
+    if [[ -z $reply && -n $DEFAULT ]]; then
+        BRANCH=$DEFAULT
+    elif [[ $reply =~ ^[0-9]+$ ]] && ((10#$reply >= 1 && 10#$reply <= ${#BRANCHES[@]})); then
+        BRANCH=${BRANCHES[10#$reply - 1]}
+    else
+        echo "Aborted."
+        exit 1
+    fi
+fi
+if [[ -n "$BRANCH" ]]; then
+    _git symbolic-ref HEAD "refs/heads/$BRANCH"
+    info "Using branch $BRANCH"
+fi
 
 # --- 4. Compare tracked files against $HOME ---
 CONFLICTS=()
